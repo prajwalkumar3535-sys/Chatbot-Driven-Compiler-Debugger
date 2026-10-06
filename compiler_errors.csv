@@ -1115,3 +1115,16 @@ C:\Users\PRAJWAL KUMAR\OneDrive\Desktop\senior\Chatbot-Driven-Compiler-Debugger\
                ^~~~~~~~
 ",N/A
 2026-10-05 11:48:56,[ERROR] Time Limit Exceeded! Possible infinite loop.,Unknown,[ERROR] Time Limit Exceeded! Possible infinite loop.,N/A
+2026-10-06 18:12:13,"/sandbox/solution.cpp: In function 'int main()':
+/sandbox/solution.cpp:5:15: error: invalid conversion from 'const char*' to 'int' [-fpermissive]
+    5 |     int age = ""twenty""; // This will cause a Type Mismatch
+      |               ^~~~~~~~
+      |               |
+      |               const char*
+",Unknown,"/sandbox/solution.cpp: In function 'int main()':
+/sandbox/solution.cpp:5:15: error: invalid conversion from 'const char*' to 'int' [-fpermissive]
+    5 |     int age = ""twenty""; // This will cause a Type Mismatch
+      |               ^~~~~~~~
+      |               |
+      |               const char*
+",N/A
