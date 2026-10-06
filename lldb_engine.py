@@ -62,16 +62,40 @@ def execute_lldb_command(executable_path, command):
     else:
         try:
             lldb_path = os.environ.get("LLDB_PATH") or shutil.which("lldb")
+            if not lldb_path and os.name == "nt":
+                candidate_paths = [
+                    r"C:\Program Files\LLVM\bin\lldb.exe",
+                    r"C:\Program Files (x86)\LLVM\bin\lldb.exe",
+                    r"C:\MinGW\bin\lldb.exe",
+                ]
+                for p in candidate_paths:
+                    if os.path.exists(p):
+                        lldb_path = p
+                        break
+
             if not lldb_path:
                 return "LLDB not found. Add lldb to PATH, start Docker for containerized debugging, or set LLDB_PATH."
 
+            # If executable_path is a docker path or doesn't exist directly, resolve in sandbox_env
+            if not os.path.exists(executable_path):
+                host_candidates = [
+                    os.path.join(SANDBOX_DIR, "temp_program.exe"),
+                    os.path.join(SANDBOX_DIR, "temp_program"),
+                    os.path.join(SANDBOX_DIR, "solution.exe"),
+                    os.path.join(SANDBOX_DIR, "solution"),
+                ]
+                for cand in host_candidates:
+                    if os.path.exists(cand):
+                        executable_path = cand
+                        break
+
             result = subprocess.run(
-                [lldb_path, "-b", "-o", "run", "-o", command, executable_path],
+                [lldb_path, "-b", "-o", "run", "-o", command, "-o", "quit", executable_path],
                 capture_output=True,
                 text=True,
                 timeout=10
             )
-            return result.stdout
+            return (result.stdout or "") + ("\n" + result.stderr if result.stderr else "")
         except subprocess.TimeoutExpired:
             return "LLDB Timeout: The command took too long to execute."
         except Exception as e:

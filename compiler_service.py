@@ -97,6 +97,17 @@ def _compile_and_run_docker(sandbox_dir):
 
 def _compile_and_run_host(cpp_code):
     """Fallback if Docker is not available."""
+    if os.name == "nt":
+        try:
+            import ctypes
+            # Disable Windows crash dialogs so process terminates immediately on segfault
+            SEM_FAILCRITICALERRORS = 0x0001
+            SEM_NOGPFAULTERRORBOX = 0x0002
+            SEM_NOOPENFILEERRORBOX = 0x8000
+            ctypes.windll.kernel32.SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX | SEM_NOOPENFILEERRORBOX)
+        except Exception:
+            pass
+
     source_file = os.path.join(SANDBOX_DIR, "temp_source.cpp")
     executable = os.path.join(SANDBOX_DIR, "temp_program.exe" if os.name == "nt" else "temp_program")
 
@@ -119,9 +130,16 @@ def _compile_and_run_host(cpp_code):
             text=True, 
             timeout=5
         )
-        windows_crash_codes = {0xC0000005, 0xC00000FD, 0xC000001D, 0xC0000094}
-        if run_process.returncode < 0 or run_process.returncode in windows_crash_codes:
-            crash_reason = run_process.stderr if run_process.stderr else f"Process crashed with exit code {run_process.returncode} (Likely Segmentation Fault)"
+        windows_crash_codes = {0xC0000005, 0xC00000FD, 0xC000001D, 0xC0000094, 0xC0000028}
+        rc = run_process.returncode
+        is_crash = (
+            rc < 0 or
+            (rc & 0xFFFFFFFF) in windows_crash_codes or
+            (rc & 0xFFFFFFFF) >= 0x80000000 or
+            (rc > 128 and os.name != "nt")
+        )
+        if is_crash:
+            crash_reason = run_process.stderr if run_process.stderr else f"Process crashed with exit code {rc} (Likely Segmentation Fault / Access Violation)"
             return 2, run_process.stdout, crash_reason
 
         full_output = run_process.stdout
