@@ -1,6 +1,44 @@
 import re
 
 # ============================================================
+# LAYER 1: INPUT VALIDATION
+# Guards against malformed, oversized, binary, or null-byte payloads
+# before code reaches the regex scanner or compiler.
+# ============================================================
+MAX_CODE_SIZE_BYTES = 50 * 1024  # 50 KB max
+MAX_LINE_COUNT = 2000
+
+def validate_input(code_snippet):
+    """
+    Layer 1: Input Validation
+    Protects against malformed, binary, oversized, or malicious non-text payloads.
+    Returns: (is_valid: bool, error_message: str)
+    """
+    if not isinstance(code_snippet, str):
+        return False, "Input validation error: Expected a valid text string."
+
+    trimmed = code_snippet.strip()
+    if not trimmed:
+        return False, "Input validation error: Code is empty or contains only whitespace."
+
+    encoded_bytes = code_snippet.encode('utf-8', errors='replace')
+    if len(encoded_bytes) > MAX_CODE_SIZE_BYTES:
+        return False, f"Input validation error: Payload exceeds maximum size ({len(encoded_bytes)} bytes > {MAX_CODE_SIZE_BYTES} bytes limit)."
+
+    lines = code_snippet.splitlines()
+    if len(lines) > MAX_LINE_COUNT:
+        return False, f"Input validation error: Code exceeds maximum line count ({len(lines)} lines > {MAX_LINE_COUNT} lines limit)."
+
+    if '\x00' in code_snippet:
+        return False, "Input validation error: Malformed payload detected (Null-byte '\\0' injection)."
+
+    control_char_count = sum(1 for ch in code_snippet if ord(ch) < 32 and ch not in ('\t', '\n', '\r'))
+    if control_char_count > 0:
+        return False, f"Input validation error: Malformed input contains {control_char_count} invalid binary/control character(s)."
+
+    return True, ""
+
+# ============================================================
 # HARD BLOCKS: CRITICAL security issues that stop execution.
 # These are dangerous enough to halt compilation entirely.
 # ============================================================
@@ -72,6 +110,11 @@ def run_security_guardrail(code_snippet):
       - is_hard_blocked=True  → stop execution, show error
       - is_hard_blocked=False → proceed, but show any soft_warnings in chatbot
     """
+    # 0. Layer 1: Input Validation Check
+    is_valid, err_msg = validate_input(code_snippet)
+    if not is_valid:
+        return True, f"INPUT VALIDATION REJECTED: {err_msg}", []
+
     # 1. Check hard blocks first — stop immediately on first match
     for pattern, message in _hard_block_patterns.items():
         if re.search(pattern, code_snippet):

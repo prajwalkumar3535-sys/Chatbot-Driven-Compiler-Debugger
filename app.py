@@ -7,7 +7,7 @@ import time
 from codecarbon import EmissionsTracker
 # Import our custom modules
 from fix_engine import validate_ai_fix
-from secure_scan import run_security_guardrail
+from secure_scan import run_security_guardrail, validate_input
 from error_classifier import classify_error, get_diagnostic_prompt
 from compiler_service import compile_and_run
 from audit_logger import log_interaction 
@@ -111,13 +111,15 @@ int main() {
             st.rerun()
 
     if compile_btn:
-        if not user_code.strip():
-            st.warning("Please write some code first!")
+        # Layer 1: Input Validation
+        is_valid_input, val_err_msg = validate_input(user_code)
+        if not is_valid_input:
+            st.warning(f"⚠️ {val_err_msg}")
         else:
             start_time = time.time()
             tracker = EmissionsTracker(project_name="llama3_debugger", log_level="error")
             tracker.start()
-            # 1. Security Scan
+            # Layer 2: Security Guardrail Pre-Scan
             is_hard_blocked, block_msg, soft_warnings = run_security_guardrail(user_code)
 
             # Hard block: dangerous function detected — stop everything

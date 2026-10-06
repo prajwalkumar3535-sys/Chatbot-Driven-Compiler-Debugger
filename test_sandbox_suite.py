@@ -1,11 +1,46 @@
 import compiler_service
 import lldb_engine
+import secure_scan
 import time
 
 def run_tests():
     print("==================================================")
     print("[*] RUNNING DOCKER SANDBOX VALIDATION TEST SUITE")
     print("==================================================")
+
+    # TEST 0: Input Validation Security Layer
+    print("\n[TEST 0] Testing Input Validation Security Layer (Layer 1)...")
+    
+    # 0.1 Empty / Whitespace payload
+    is_valid, err = secure_scan.validate_input("   \n\t  ")
+    assert not is_valid and "empty" in err.lower(), f"Failed empty check: {err}"
+    print("  [OK] Empty/Whitespace input rejected.")
+
+    # 0.2 Oversized payload (>50KB)
+    oversized_code = "int x = 1;\n" * 6000  # ~66KB
+    is_valid, err = secure_scan.validate_input(oversized_code)
+    assert not is_valid and "exceeds maximum" in err.lower(), f"Failed oversized check: {err}"
+    print("  [OK] Oversized payload (>50KB) rejected.")
+
+    # 0.3 Null-byte injection
+    null_byte_code = "int main() {\x00 system(\"calc.exe\"); return 0; }"
+    is_valid, err = secure_scan.validate_input(null_byte_code)
+    assert not is_valid and "null-byte" in err.lower(), f"Failed null-byte check: {err}"
+    print("  [OK] Null-byte injection rejected.")
+
+    # 0.4 Malformed binary / control character payload
+    binary_payload = "int main() {\x01\x02\x03\x04 return 0; }"
+    is_valid, err = secure_scan.validate_input(binary_payload)
+    assert not is_valid and "control character" in err.lower(), f"Failed binary payload check: {err}"
+    print("  [OK] Malformed binary/control characters rejected.")
+
+    # 0.5 Valid code passing input validation
+    valid_sample = "int main() { return 0; }"
+    is_valid, err = secure_scan.validate_input(valid_sample)
+    assert is_valid and err == "", f"Failed valid input check: {err}"
+    print("  [OK] Valid input accepted cleanly.")
+
+    print("[PASSED] TEST 0: Input Validation Layer (Layer 1) passed all security checks.")
 
     # TEST 1: Normal Code
     print("\n[TEST 1] Testing Valid C++ Execution...")
