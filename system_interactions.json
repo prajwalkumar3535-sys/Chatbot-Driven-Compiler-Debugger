@@ -232,5 +232,41 @@
         "user_prompt": "Help fix my code",
         "llm_response": "Here is the fix",
         "fixed_code": "N/A"
+    },
+    {
+        "timestamp": "2026-10-06 19:16:30",
+        "error_category": "Syntax",
+        "security_flag": "SAFE",
+        "code_snippet": "int main() {}",
+        "user_prompt": "Help fix my code",
+        "llm_response": "Here is the fix",
+        "fixed_code": "N/A"
+    },
+    {
+        "timestamp": "2026-10-06 19:22:53",
+        "error_category": "Syntax",
+        "security_flag": "SAFE",
+        "code_snippet": "int main() {}",
+        "user_prompt": "Help fix my code",
+        "llm_response": "Here is the fix",
+        "fixed_code": "N/A"
+    },
+    {
+        "timestamp": "2026-10-06 19:23:50",
+        "error_category": "Syntax",
+        "security_flag": "SAFE",
+        "code_snippet": "int main() {}",
+        "user_prompt": "Help fix my code",
+        "llm_response": "Here is the fix",
+        "fixed_code": "N/A"
+    },
+    {
+        "timestamp": "2026-10-06 19:25:18",
+        "error_category": "Syntax",
+        "security_flag": "SAFE",
+        "code_snippet": "int main() {}",
+        "user_prompt": "Help fix my code",
+        "llm_response": "Here is the fix",
+        "fixed_code": "N/A"
     }
 ]

@@ -3,6 +3,7 @@
 24CSB0A58_CD_Final_Codes/
 
 # Mac & Compiler Artifacts
+.DS_Store
 *.dSYM/
 *.bin
 temp_program
@@ -13,3 +14,8 @@ debug_target.cpp
 powermetrics_log.txt
 # Sandbox environment
 sandbox_env/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.exe
+*.o
