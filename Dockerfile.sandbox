@@ -1,0 +1,22 @@
+FROM alpine:3.19
+
+# Install GCC, G++, LLDB, and standard C++ libraries
+RUN apk add --no-cache g++ lldb libstdc++ bash
+
+# Create an unprivileged user for code execution
+RUN adduser -D -u 1000 -s /bin/bash sandboxuser
+
+# Setup sandbox workspace
+WORKDIR /sandbox
+RUN chown -R sandboxuser:sandboxuser /sandbox
+
+USER sandboxuser
+
+
+
+
+
+
+
+
+
