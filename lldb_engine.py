@@ -19,46 +19,15 @@ def is_docker_available():
     except Exception:
         return False
 
+from docker_executor import run_lldb_in_docker, is_docker_engine_ready
+
 def execute_lldb_command(executable_path, command):
     """
     Runs a specific LLDB command on the compiled binary in batch mode.
     Executes securely within the Docker sandbox when available.
     """
-    if is_docker_available():
-        try:
-            docker_cmd = [
-                "docker", "run", "--rm",
-                "--network", "none",
-                "--cap-add=SYS_PTRACE",
-                "--security-opt", "seccomp=unconfined",
-                "-v", f"{SANDBOX_DIR}:/sandbox",
-                SANDBOX_IMAGE,
-                "lldb", "-b",
-                "-o", "settings set target.disable-aslr false",
-                "-o", "run",
-                "-o", command,
-                "-o", "quit",
-                "/sandbox/prog"
-            ]
-            result = subprocess.run(
-                docker_cmd,
-                capture_output=True,
-                text=True,
-                timeout=12
-            )
-            output = result.stdout or result.stderr
-            # Filter out any container Python wrapper warnings
-            cleaned_lines = [
-                line for line in output.splitlines() 
-                if not line.startswith("Traceback") and 
-                   not line.startswith("  File") and 
-                   not line.startswith("ModuleNotFoundError")
-            ]
-            return "\n".join(cleaned_lines).strip()
-        except subprocess.TimeoutExpired:
-            return "LLDB Timeout: The command took too long to execute in sandbox."
-        except Exception as e:
-            return f"LLDB Sandbox Error: {str(e)}"
+    if is_docker_engine_ready():
+        return run_lldb_in_docker(SANDBOX_DIR, command)
     else:
         try:
             lldb_path = os.environ.get("LLDB_PATH") or shutil.which("lldb")

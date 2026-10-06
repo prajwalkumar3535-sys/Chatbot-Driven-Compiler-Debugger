@@ -214,5 +214,23 @@
         "user_prompt": "give me the code to build it",
         "llm_response": "I'd be happy to help you with the code. However, I want to clarify that building a complete AVL tree implementation in C++ is a significant task that requires a good understanding of data structures and algorithms.\n\nThat being said, here's a simple example to get you started:\n\n```cpp\n#include <iostream>\n#include <string>\n#include <utility>\n#include <vector>\n\nusing namespace std;\n\n// Node structure\nstruct Node {\n    int key;\n    Node* left;\n    Node* right;\n    int height;\n};\n\n// Function to get the height of a node\nint getHeight(Node* node) {\n    if (node == nullptr) {\n        return 0;\n    }\n    return node->height;\n}\n\n// Function to update the height of a node\nvoid updateHeight(Node* node) {\n    node->height = max(getHeight(node->left), getHeight(node->right)) + 1;\n}\n\n// Function to get the balance factor of a node\nint getBalance(Node* node) {\n    if (node == nullptr) {\n        return 0;\n    }\n    return getHeight(node->left) - getHeight(node->right);\n}\n\n// Function to rotate left\nNode* rotateLeft(Node* node) {\n    Node* temp = node->right;\n    Node* temp2 = temp->left;\n    temp->left = node;\n    node->right = temp2;\n    updateHeight(node);\n    updateHeight(temp);\n    return temp;\n}\n\n// Function to rotate right\nNode* rotateRight(Node* node) {\n    Node* temp = node->left;\n    Node* temp2 = temp->right;\n    temp->right = node;\n    node->left = temp2;\n    updateHeight(node);\n    updateHeight(temp);\n    return temp;\n}\n\n// Function to balance the tree\nNode* balance(Node* node) {\n    int balanceFactor = getBalance(node);\n    if (balanceFactor > 1) {\n        if (getBalance(node->left) > 0) {\n            return rotateRight(node);\n        } else {\n            node->left = rotateLeft(node->left);\n            return rotateRight(node);\n        }\n    } else if (balanceFactor < -1) {\n        if (getBalance(node->right) < 0) {\n            return rotateLeft(node);\n        } else {\n            node->right = rotateRight(node->right);\n            return rotateLeft(node);\n        }\n    }\n    return node;\n}\n\n// Function to insert a node\nNode* insert(Node* node, int key) {\n    if (node == nullptr) {\n        return new Node{key, nullptr, nullptr, 0};\n    }\n    if (key < node->key) {\n        node->left = insert(node->left, key);\n    } else if (key > node->key) {\n        node->right = insert(node->right, key);\n    } else {\n        return node; // key already exists\n    }\n    updateHeight(node);\n    return balance(node);\n}\n\nint main() {\n    Node* root = nullptr;\n    for (int i = 0; i < 5; i++) {\n        root = insert(root, i);\n    }\n    return 0;\n}\n```\n\nThis code provides the basic structure for an AVL tree. However, please note that this is a simplified example, and you'll need to implement more functionality (like searching, deleting, and rebalancing) to make it a complete AVL tree implementation.",
         "fixed_code": "N/A"
+    },
+    {
+        "timestamp": "2026-10-06 19:09:48",
+        "error_category": "Syntax",
+        "security_flag": "SAFE",
+        "code_snippet": "int main() {}",
+        "user_prompt": "Help fix my code",
+        "llm_response": "Here is the fix",
+        "fixed_code": "N/A"
+    },
+    {
+        "timestamp": "2026-10-06 19:11:28",
+        "error_category": "Syntax",
+        "security_flag": "SAFE",
+        "code_snippet": "int main() {}",
+        "user_prompt": "Help fix my code",
+        "llm_response": "Here is the fix",
+        "fixed_code": "N/A"
     }
 ]
