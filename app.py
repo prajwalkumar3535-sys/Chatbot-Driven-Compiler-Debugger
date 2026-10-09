@@ -19,24 +19,46 @@ from security_logger import log_security_event
 
 # LLM config
 OLLAMA_URL = "http://localhost:11434/api/generate"
+OLLAMA_HEALTH_URL = "http://localhost:11434/api/tags"
 MODEL_NAME = "llama3"
 
+
+def is_ollama_running() -> bool:
+    """Fast 2-second ping to check if Ollama server is up."""
+    try:
+        r = requests.get(OLLAMA_HEALTH_URL, timeout=2)
+        return r.status_code == 200
+    except Exception:
+        return False
+
+
 def get_ai_explanation(prompt):
-    """Sends the prompt to the local Ollama Llama 3 model."""
+    """Sends the prompt to the local Ollama Llama 3 model.
+    Returns a friendly message if Ollama is not running."""
+    if not is_ollama_running():
+        return (
+            "⚠️ **AI Assistant Offline** — Ollama is not running on this machine.\n\n"
+            "To enable AI explanations and fixes, start Ollama:\n"
+            "```\nollama serve\n```\n"
+            "Then make sure the **llama3** model is pulled:\n"
+            "```\nollama pull llama3\n```\n"
+            "Once Ollama is running, re-submit your code to get AI feedback."
+        )
+
     payload = {
         "model": MODEL_NAME,
         "prompt": prompt,
         "stream": False
     }
     try:
-        response = requests.post(OLLAMA_URL, json=payload, timeout=15)
+        response = requests.post(OLLAMA_URL, json=payload, timeout=60)
         if response.status_code == 200:
             return response.json().get('response', '')
         else:
-            return f"Error connecting to Ollama: {response.status_code}"
+            return f"⚠️ Ollama returned an error (HTTP {response.status_code}). Please check your Ollama setup."
     except Exception as e:
-        return f"Connection Failed. Is Ollama running? Error: {str(e)}"
-    
+        return f"⚠️ AI request failed: {str(e)}"
+
 
 def stop_and_save_metrics(tracker, start_t):
     """Stops the carbon tracker and saves metrics with safe fallback."""
