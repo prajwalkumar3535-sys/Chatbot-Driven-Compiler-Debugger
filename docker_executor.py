@@ -59,7 +59,7 @@ def compile_in_docker(sandbox_dir: str = SANDBOX_DIR, timeout: int = DEFAULT_COM
         *get_docker_resource_args(memory=DEFAULT_COMPILE_MEMORY, cpus="1.0", pids_limit=64),
         "-v", f"{sandbox_dir}:/sandbox",
         SANDBOX_IMAGE,
-        "sh", "-c", "g++ -g /sandbox/solution.cpp -o /sandbox/prog"
+        "sh", "-c", "g++ -g /sandbox/solution.cpp -o /sandbox/prog_bin"
     ]
 
     try:
@@ -98,7 +98,7 @@ def run_in_docker(sandbox_dir: str = SANDBOX_DIR, timeout: int = DEFAULT_RUN_TIM
         *get_docker_resource_args(memory=DEFAULT_MEMORY_LIMIT, cpus="1.0", pids_limit=32),
         "-v", f"{sandbox_dir}:/sandbox",
         SANDBOX_IMAGE,
-        "/sandbox/prog"
+        "/sandbox/prog_bin"
     ]
 
     try:
@@ -132,7 +132,17 @@ def run_in_docker(sandbox_dir: str = SANDBOX_DIR, timeout: int = DEFAULT_RUN_TIM
 def run_lldb_in_docker(sandbox_dir: str = SANDBOX_DIR, command: str = "bt", timeout: int = DEFAULT_LLDB_TIMEOUT) -> str:
     """
     Runs LLDB debugger inside sandbox container with SYS_PTRACE capability to inspect memory.
+    Tries prog_bin first (used by language_executor), then falls back to prog.
     """
+    # Determine which binary exists in the sandbox volume
+    binary_candidates = ["prog_bin", "prog"]
+    target_binary = "/sandbox/prog_bin"  # default
+    for candidate in binary_candidates:
+        host_path = os.path.join(sandbox_dir, candidate)
+        if os.path.exists(host_path):
+            target_binary = f"/sandbox/{candidate}"
+            break
+
     docker_cmd = [
         "docker", "run", "--rm",
         "--network", "none",
@@ -146,7 +156,7 @@ def run_lldb_in_docker(sandbox_dir: str = SANDBOX_DIR, command: str = "bt", time
         "-o", "run",
         "-o", command,
         "-o", "quit",
-        "/sandbox/prog"
+        target_binary
     ]
 
     try:
