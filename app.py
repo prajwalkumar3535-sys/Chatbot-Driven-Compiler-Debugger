@@ -17,10 +17,12 @@ from error_logger import log_error
 from lldb_engine import agentic_debug_loop 
 from security_logger import log_security_event
 
+import json
+
 # LLM config
 OLLAMA_URL = "http://localhost:11434/api/generate"
 OLLAMA_HEALTH_URL = "http://localhost:11434/api/tags"
-MODEL_NAME = "llama3"
+DEFAULT_MODEL = "llama3.2:1b"
 
 
 def is_ollama_running() -> bool:
@@ -32,32 +34,91 @@ def is_ollama_running() -> bool:
         return False
 
 
-def get_ai_explanation(prompt):
-    """Sends the prompt to the local Ollama Llama 3 model.
-    Returns a friendly message if Ollama is not running."""
+def get_available_models():
+    """Detects available models in Ollama."""
+    try:
+        r = requests.get(OLLAMA_HEALTH_URL, timeout=2)
+        if r.status_code == 200:
+            models = [m.get("name", "") for m in r.json().get("models", [])]
+            if models:
+                return models
+    except Exception:
+        pass
+    return ["llama3.2:1b", "llama3"]
+
+
+def get_ai_explanation(prompt, model_name=None):
+    """Sends prompt to local Ollama model with fast streaming concatenation & timeout protection."""
     if not is_ollama_running():
         return (
             "⚠️ **AI Assistant Offline** — Ollama is not running on this machine.\n\n"
             "To enable AI explanations and fixes, start Ollama:\n"
             "```\nollama serve\n```\n"
-            "Then make sure the **llama3** model is pulled:\n"
-            "```\nollama pull llama3\n```\n"
+            "Then make sure the model is pulled:\n"
+            "```\nollama pull llama3.2:1b\n```\n"
             "Once Ollama is running, re-submit your code to get AI feedback."
         )
 
+    model = model_name or st.session_state.get("selected_ai_model", DEFAULT_MODEL)
     payload = {
-        "model": MODEL_NAME,
+        "model": model,
         "prompt": prompt,
-        "stream": False
+        "stream": True,
+        "options": {
+            "num_predict": 450,
+            "temperature": 0.2
+        }
     }
     try:
-        response = requests.post(OLLAMA_URL, json=payload, timeout=60)
+        response = requests.post(OLLAMA_URL, json=payload, stream=True, timeout=(5, 120))
         if response.status_code == 200:
-            return response.json().get('response', '')
+            full_response = []
+            for line in response.iter_lines():
+                if line:
+                    data = json.loads(line)
+                    full_response.append(data.get("response", ""))
+                    if data.get("done", False):
+                        break
+            return "".join(full_response)
         else:
             return f"⚠️ Ollama returned an error (HTTP {response.status_code}). Please check your Ollama setup."
     except Exception as e:
         return f"⚠️ AI request failed: {str(e)}"
+
+
+def stream_ai_explanation(prompt, model_name=None):
+    """Streams response from local Ollama model token-by-token for interactive real-time typing."""
+    if not is_ollama_running():
+        yield (
+            "⚠️ **AI Assistant Offline** — Ollama is not running on this machine.\n\n"
+            "To enable AI explanations, run `ollama serve` in a terminal."
+        )
+        return
+
+    model = model_name or st.session_state.get("selected_ai_model", DEFAULT_MODEL)
+    payload = {
+        "model": model,
+        "prompt": prompt,
+        "stream": True,
+        "options": {
+            "num_predict": 500,
+            "temperature": 0.3
+        }
+    }
+    try:
+        response = requests.post(OLLAMA_URL, json=payload, stream=True, timeout=(5, 120))
+        if response.status_code == 200:
+            for line in response.iter_lines():
+                if line:
+                    data = json.loads(line)
+                    token = data.get("response", "")
+                    yield token
+                    if data.get("done", False):
+                        break
+        else:
+            yield f"⚠️ Ollama returned an error (HTTP {response.status_code})."
+    except Exception as e:
+        yield f"⚠️ AI request failed: {str(e)}"
 
 
 def stop_and_save_metrics(tracker, start_t):
@@ -112,7 +173,7 @@ if "green_metrics" not in st.session_state:
 st.title("⚡ Chatbot-Driven Sandbox Compiler & Debugger")
 st.markdown("### Secure Multi-Language Code Execution Sandbox (C++ • Python • Java)")
 
-# --- LANGUAGE SELECTOR BAR ---
+# --- LANGUAGE & MODEL SELECTOR BAR ---
 lang_col1, lang_col2, lang_col3 = st.columns([2, 2, 2])
 with lang_col1:
     lang_display_options = ["C++", "Python", "Java"]
@@ -120,7 +181,7 @@ with lang_col1:
     inv_lang_map = {v: k for k, v in lang_key_map.items()}
 
     current_display = inv_lang_map.get(st.session_state.selected_language, "C++")
-    selected_display = st.selectbox("🌐 Select Language:", lang_display_options, index=lang_display_options.index(current_display))
+    selected_display = st.selectbox("🌐 Language:", lang_display_options, index=lang_display_options.index(current_display))
     new_lang_key = lang_key_map[selected_display]
 
     # Handle language change
@@ -134,10 +195,14 @@ current_lang = st.session_state.selected_language
 current_cfg = get_language_config(current_lang)
 
 with lang_col2:
-    st.info(f"🔒 **Sandbox Image:** `{current_cfg['docker_image']}` | **Isolation:** Network Disabled • Non-Root • RAM {current_cfg['memory_limit']}")
+    model_labels = ["llama3.2:1b (⚡ Ultra Fast)", "llama3:latest (8B Deep)"]
+    model_values = ["llama3.2:1b", "llama3"]
+    default_idx = 0
+    selected_model_label = st.selectbox("🤖 AI Model:", model_labels, index=default_idx)
+    st.session_state.selected_ai_model = model_values[model_labels.index(selected_model_label)]
 
 with lang_col3:
-    st.markdown(f"**Selected Language:** `[{current_cfg['display_name']}]` ({current_cfg['extension']})")
+    st.info(f"🔒 **Sandbox:** `{current_cfg['docker_image']}` | **RAM:** {current_cfg['memory_limit']}")
 
 col1, col2 = st.columns(2)
 
@@ -350,9 +415,8 @@ with col2:
 
         with chat_container:
             with st.chat_message("assistant"):
-                with st.spinner("Thinking..."):
-                    ai_reply = get_ai_explanation(conversation_history)
-                    st.markdown(ai_reply)
+                stream_gen = stream_ai_explanation(conversation_history)
+                ai_reply = st.write_stream(stream_gen)
                     
         st.session_state.messages.append({"role": "assistant", "content": ai_reply})
         log_interaction(

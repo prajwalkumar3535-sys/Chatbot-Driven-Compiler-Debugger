@@ -6,7 +6,7 @@ import shutil
 
 # LLM config (Must match your app.py)
 OLLAMA_URL = "http://localhost:11434/api/generate"
-MODEL_NAME = "llama3"
+MODEL_NAME = "llama3.2:1b"
 
 SANDBOX_IMAGE = "cpp-sandbox"
 SANDBOX_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "sandbox_env"))
@@ -110,7 +110,7 @@ You MUST respond in strict JSON format:
         
         payload = {"model": MODEL_NAME, "prompt": current_context, "stream": False, "format": "json"}
         try:
-            response = requests.post(OLLAMA_URL, json=payload, timeout=30).json()['response']
+            response = requests.post(OLLAMA_URL, json=payload, timeout=120).json()['response']
         except Exception as e:
             return f"Failed to connect to LLM for debugging: {str(e)}", ui_debug_log
         
