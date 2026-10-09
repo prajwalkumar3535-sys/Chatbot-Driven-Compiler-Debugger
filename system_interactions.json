@@ -277,5 +277,51 @@
         "user_prompt": "Help fix my code",
         "llm_response": "Here is the fix",
         "fixed_code": "N/A"
+    },
+    {
+        "timestamp": "2026-10-06 21:10:24",
+        "error_category": "Syntax",
+        "security_flag": "SAFE",
+        "code_snippet": "int main() {}",
+        "user_prompt": "Help fix my code",
+        "llm_response": "Here is the fix",
+        "fixed_code": "N/A"
+    },
+    {
+        "timestamp": "2026-10-06 21:22:11",
+        "error_category": "Syntax",
+        "security_flag": "SAFE",
+        "code_snippet": "int main() {}",
+        "user_prompt": "Help fix my code",
+        "llm_response": "Here is the fix",
+        "fixed_code": "N/A"
+    },
+    {
+        "timestamp": "2026-10-06 21:31:33",
+        "error_category": "Runtime Error (Infinite Loop)",
+        "code_snippet": "n=int(input())\nprint(n**2)",
+        "user_prompt": "SYSTEM (Compile Failed)",
+        "llm_response": "**Detected:** Runtime Error (Infinite Loop)\n\n### EXPLANATION\n\nThe compiler error \"Time Limit Exceeded! Possible infinite loop\" suggests that the code is entering an infinite loop. This is because the code does not have a termination condition, and the `input()` function is not a valid C++ function. Additionally, the `print()` function is not a valid C++ function; the correct function to print output is `std::cout`.\n\nThe `n=int(input())` line is attempting to read input from the user, which is not a valid C++ statement. C++ does not have a built-in way to read input from the user like this. Instead, we can use the `std::cin` stream to read input.\n\nThe `print(n**2)` line is trying to print the result of the expression `n**2`, but the correct way to print output in C++ is using `std::cout`.\n\n### SECURE FIXED CODE\n```cpp\n#include <iostream>\n#include <limits>\n\nint main() {\n    int n;\n    std::cin >> n;\n    if (std::cin.fail()) {\n        std::cerr << \"Invalid input. Please enter a valid integer.\" << std::endl;\n        return 1;\n    }\n    std::cout << n * n << std::endl;\n    return 0;\n}\n```\n\nIn this corrected code:\n\n* We included the necessary headers (`<iostream>` and `<limits>`) to use the `std::cin` and `std::cout` streams.\n* We used the `std::cin` stream to read an integer from the user, and checked if the input was successful using the `std::cin.fail()` function. If the input was invalid, we printed an error message and returned an error code.\n* We used the `std::cout` stream to print the result of the expression `n * n`, which is equivalent to `n**2`.\n* We wrapped the code in a `main()` function and returned a value indicating the success or failure of the program.",
+        "fixed_code": "#include <iostream>\n#include <limits>\n\nint main() {\n    int n;\n    std::cin >> n;\n    if (std::cin.fail()) {\n        std::cerr << \"Invalid input. Please enter a valid integer.\" << std::endl;\n        return 1;\n    }\n    std::cout << n * n << std::endl;\n    return 0;\n}"
+    },
+    {
+        "timestamp": "2026-10-06 21:56:07",
+        "language": "cpp",
+        "error_category": "Syntax",
+        "security_flag": "SAFE",
+        "code_snippet": "int main() {}",
+        "user_prompt": "Help fix my code",
+        "llm_response": "Here is the fix",
+        "fixed_code": "N/A"
+    },
+    {
+        "timestamp": "2026-10-09 15:01:39",
+        "language": "cpp",
+        "error_category": "Syntax",
+        "security_flag": "SAFE",
+        "code_snippet": "int main() {}",
+        "user_prompt": "Help fix my code",
+        "llm_response": "Here is the fix",
+        "fixed_code": "N/A"
     }
 ]

@@ -1,21 +1,23 @@
 """
 security_scanner.py - Layer 2: Static Security Scanner & Layer 12: AI Fix Verification
-Performs static analysis on C++ source code and AI-generated repair fixes.
+Performs static analysis on source code and AI-generated repair fixes for C++, Python, and Java.
+
 Protects against:
-  - OS Command Injections (system, popen, exec*)
+  - OS Command Injections (system, popen, exec*, subprocess, Runtime.exec, ProcessBuilder)
   - Buffer Overflows & Memory Corruption (gets, strcpy, strcat, sprintf, vsprintf)
   - Format String Attacks (printf with variable format string)
   - Insecure Temporary File Creation (mktemp, tmpnam, tempnam)
-  - Unsafe / Deprecated C++ idioms (auto_ptr, void main)
+  - Unsafe / Deprecated idioms (auto_ptr, void main, Unsafe)
+  - Unauthorized network attempts and sensitive path access
 """
 
 import re
 from input_validator import validate_input
 
 # ============================================================
-# HARD BLOCKS: CRITICAL security threats that halt execution
+# C++ PATTERNS
 # ============================================================
-HARD_BLOCK_PATTERNS = {
+CPP_HARD_BLOCK_PATTERNS = {
     # 1. Critical Buffer Overflows
     r'\bgets\b': "CRITICAL: 'gets()' performs no bounds checking. It is officially removed in C++14. Use 'std::cin' or 'fgets()'.",
     r'\bstrcpy\b': "CRITICAL: 'strcpy' does not check buffer size. Use 'strncpy' or 'std::string'.",
@@ -48,10 +50,7 @@ HARD_BLOCK_PATTERNS = {
     r'\bauto_ptr\b': "CRITICAL: 'std::auto_ptr' is removed in C++17 due to unsafe copy semantics. Use 'std::unique_ptr'.",
 }
 
-# ============================================================
-# SOFT WARNINGS: Code advisories (flagged but allowed to compile)
-# ============================================================
-SOFT_WARNING_PATTERNS = {
+CPP_SOFT_WARNING_PATTERNS = {
     r'\bstrncpy\b': "WARNING: 'strncpy' can leave strings unterminated if source is larger than destination. Prefer 'std::string'.",
     r'\bsyslog\s*\(': "WARNING: Ensure you are not passing un-sanitized user input directly to 'syslog()'.",
     r'\bfree\s*\(': "WARNING: Mixing 'malloc/free' with 'new/delete' causes undefined behavior. Stick to C++ smart pointers or new/delete.",
@@ -64,10 +63,93 @@ SOFT_WARNING_PATTERNS = {
     r'#include\s+<bits/stdc\+\+\.h>': "ADVISORY: '<bits/stdc++.h>' is non-portable and increases compilation time. Include specific headers (e.g. <iostream>, <vector>).",
 }
 
+# Alias for backward compatibility
+HARD_BLOCK_PATTERNS = CPP_HARD_BLOCK_PATTERNS
+SOFT_WARNING_PATTERNS = CPP_SOFT_WARNING_PATTERNS
 
-def scan_code(code_snippet: str) -> tuple[bool, str, list[str]]:
+# ============================================================
+# PYTHON PATTERNS
+# ============================================================
+PYTHON_HARD_BLOCK_PATTERNS = {
+    # 1. OS Command Injection & Process Spawning
+    r'\bos\.system\s*\(': "CRITICAL: 'os.system()' allows arbitrary OS command execution.",
+    r'\bos\.popen\s*\(': "CRITICAL: 'os.popen()' allows arbitrary command execution via pipes.",
+    r'\bos\.spawn[a-zA-Z]*\s*\(': "CRITICAL: 'os.spawn*' spawns arbitrary OS processes.",
+    r'\bos\.exec[a-zA-Z]*\s*\(': "CRITICAL: 'os.exec*' replaces current process with arbitrary OS binary.",
+    r'\bsubprocess\.(?:Popen|run|call|check_output|check_call)\s*\(': "CRITICAL: 'subprocess' process creation is disallowed in sandbox submissions.",
+    r'\bpty\.spawn\s*\(': "CRITICAL: 'pty.spawn' allows pseudo-terminal escalation.",
+
+    # 2. Code Injection & Dynamic Execution
+    r'\beval\s*\(': "CRITICAL: 'eval()' allows arbitrary dynamic Python expression execution.",
+    r'\bexec\s*\(': "CRITICAL: 'exec()' allows arbitrary dynamic Python statement execution.",
+    r'__import__\s*\(\s*[\'"](?:os|subprocess|pty|socket)[\'"]': "CRITICAL: Dynamic import of restricted system modules is prohibited.",
+
+    # 3. Network operations (static guardrail)
+    r'\bimport\s+socket\b': "CRITICAL: Network socket operations are prohibited in sandbox.",
+    r'\bfrom\s+socket\s+import\b': "CRITICAL: Network socket operations are prohibited in sandbox.",
+    r'\bsocket\.socket\s*\(': "CRITICAL: Network socket creation is blocked.",
+    r'\burllib\.request\b': "CRITICAL: Network requests via urllib are prohibited.",
+    r'\bhttp\.client\b': "CRITICAL: Network requests via http.client are prohibited.",
+    r'\brequests\.(?:get|post|put|delete)\s*\(': "CRITICAL: HTTP network requests via 'requests' are prohibited.",
+
+    # 4. Sensitive filesystem locations
+    r'open\s*\(\s*[\'"]\/(?:etc|proc|sys|root)': "CRITICAL: Access to sensitive system directories (/etc, /proc, /sys, /root) is forbidden.",
+    r'shutil\.rmtree\s*\(\s*[\'"]\/[\'"]': "CRITICAL: Destructive filesystem operations are strictly forbidden.",
+}
+
+PYTHON_SOFT_WARNING_PATTERNS = {
+    r'except\s*:': "WARNING: Bare 'except:' catches all exceptions including SystemExit and KeyboardInterrupt. Prefer 'except Exception:'.",
+    r'from\s+\w+\s+import\s+\*': "WARNING: Wildcard 'import *' pollutes namespace. Import explicit names instead.",
+    r'time\.sleep\s*\(\s*(?:[1-9]\d{1,})\s*\)': "WARNING: Long sleep duration may trigger execution timeout (5s limit).",
+}
+
+# ============================================================
+# JAVA PATTERNS
+# ============================================================
+JAVA_HARD_BLOCK_PATTERNS = {
+    # 1. Process Execution
+    r'Runtime\.getRuntime\s*\(\s*\)\.exec\s*\(': "CRITICAL: 'Runtime.getRuntime().exec()' allows arbitrary command execution.",
+    r'new\s+ProcessBuilder\s*\(': "CRITICAL: 'ProcessBuilder' allows arbitrary process execution.",
+    r'ProcessBuilder\s*\(': "CRITICAL: 'ProcessBuilder' allows arbitrary process execution.",
+    r'System\.exit\s*\(': "CRITICAL: 'System.exit()' terminates the JVM runtime.",
+
+    # 2. Native code & Unsafe reflection
+    r'System\.loadLibrary\s*\(': "CRITICAL: Loading native libraries via 'System.loadLibrary()' is prohibited.",
+    r'System\.load\s*\(': "CRITICAL: Loading native binaries via 'System.load()' is prohibited.",
+    r'sun\.misc\.Unsafe': "CRITICAL: 'sun.misc.Unsafe' low-level memory access is prohibited.",
+
+    # 3. Network operations
+    r'java\.net\.Socket\b': "CRITICAL: Network socket operations are prohibited in sandbox.",
+    r'java\.net\.ServerSocket\b': "CRITICAL: Server sockets are prohibited in sandbox.",
+    r'java\.net\.URL\b': "CRITICAL: Network URL operations are prohibited in sandbox.",
+    r'HttpURLConnection\b': "CRITICAL: HTTP connections are prohibited in sandbox.",
+
+    # 4. Sensitive system paths
+    r'new\s+File(?:InputStream|Reader)?\s*\(\s*[\'"]\/(?:etc|proc|sys|root)': "CRITICAL: Access to sensitive system directories is forbidden.",
+}
+
+JAVA_SOFT_WARNING_PATTERNS = {
+    r'System\.gc\s*\(\s*\)': "WARNING: Explicit 'System.gc()' calls are usually unnecessary and degrade performance.",
+    r'Thread\.stop\s*\(\s*\)': "WARNING: 'Thread.stop()' is deprecated and inherently unsafe.",
+    r'\.printStackTrace\s*\(\s*\)': "WARNING: 'printStackTrace()' outputs raw stack traces. Consider using structured logging.",
+}
+
+
+def get_patterns_for_language(language: str = "cpp") -> tuple[dict, dict]:
+    """Returns (hard_blocks, soft_warnings) for given language."""
+    lang = (language or "cpp").lower().strip()
+    if lang == "python" or lang == "py":
+        return PYTHON_HARD_BLOCK_PATTERNS, PYTHON_SOFT_WARNING_PATTERNS
+    elif lang == "java":
+        return JAVA_HARD_BLOCK_PATTERNS, JAVA_SOFT_WARNING_PATTERNS
+    else:
+        return CPP_HARD_BLOCK_PATTERNS, CPP_SOFT_WARNING_PATTERNS
+
+
+def scan_code(code_snippet: str, language: str = "cpp") -> tuple[bool, str, list[str]]:
     """
-    Scans C++ source code using Layer 1 (Input Validation) & Layer 2 (Static Guardrails).
+    Scans source code using Layer 1 (Input Validation) & Layer 2 (Static Guardrails).
+    Language-aware for C++, Python, and Java.
     
     Returns:
         tuple[bool, str, list[str]]: (is_blocked, block_message, soft_warnings)
@@ -75,39 +157,53 @@ def scan_code(code_snippet: str) -> tuple[bool, str, list[str]]:
           - is_blocked=False: Proceed to execution sandbox.
     """
     # 0. Input validation check
-    is_valid, val_err = validate_input(code_snippet)
+    is_valid, val_err = validate_input(code_snippet, language=language)
     if not is_valid:
         return True, f"Input Validation Failed: {val_err}", []
 
+    hard_blocks, soft_warnings_dict = get_patterns_for_language(language)
+
     # 1. Hard block checks
-    for pattern, msg in HARD_BLOCK_PATTERNS.items():
+    for pattern, msg in hard_blocks.items():
         if re.search(pattern, code_snippet):
             return True, msg, []
 
     # 2. Soft warning checks
     soft_warnings = []
-    for pattern, msg in SOFT_WARNING_PATTERNS.items():
+    for pattern, msg in soft_warnings_dict.items():
         if re.search(pattern, code_snippet):
             soft_warnings.append(msg)
 
     return False, "", soft_warnings
 
 
-def verify_ai_fix(llm_response: str) -> tuple[bool, str | None, str]:
+def verify_ai_fix(llm_response: str, language: str = "cpp") -> tuple[bool, str | None, str]:
     """
     Layer 12: AI Fix Security Verification.
     Validates that LLM generated code repairs do not introduce security risks.
+    Language-aware for C++, Python, and Java.
     
     Returns:
         tuple[bool, str | None, str]: (is_safe, extracted_code, status_message)
     """
-    # Extract code from markdown block
-    match = re.search(r'```(?:cpp|c\+\+)?\n(.*?)\n```', llm_response, re.DOTALL | re.IGNORECASE)
+    lang = (language or "cpp").lower().strip()
+    
+    # Extract code from markdown block matching language
+    if lang in ("python", "py"):
+        match = re.search(r'```(?:python|py)?\n(.*?)\n```', llm_response, re.DOTALL | re.IGNORECASE)
+    elif lang == "java":
+        match = re.search(r'```(?:java)?\n(.*?)\n```', llm_response, re.DOTALL | re.IGNORECASE)
+    else:
+        match = re.search(r'```(?:cpp|c\+\+)?\n(.*?)\n```', llm_response, re.DOTALL | re.IGNORECASE)
+
     if not match:
-        return False, None, "No valid C++ code block was found in the AI suggestion."
+        # Fallback to any code block
+        match = re.search(r'```[a-zA-Z0-9_-]*\n(.*?)\n```', llm_response, re.DOTALL)
+        if not match:
+            return False, None, f"No valid {language.upper()} code block was found in the AI suggestion."
 
     extracted_code = match.group(1).strip()
-    is_blocked, block_msg, soft_warnings = scan_code(extracted_code)
+    is_blocked, block_msg, soft_warnings = scan_code(extracted_code, language=language)
 
     if is_blocked:
         return False, extracted_code, f"Security Violation: AI suggested an unsafe pattern: {block_msg}"

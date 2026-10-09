@@ -6,3 +6,7 @@ Timestamp,Event_Type,Severity,Details,Code_Snippet
 2026-10-06 19:23:50,TEST_SECURITY_EVENT,HIGH,Automated security suite validation test,"int main() { system(""calc""); }"
 2026-10-06 19:25:18,TEST_SECURITY_EVENT,HIGH,Automated security suite validation test,"int main() { system(""calc""); }"
 2026-10-06 19:30:02,TEST_SECURITY_EVENT,HIGH,Automated security suite validation test,"int main() { system(""calc""); }"
+2026-10-06 21:10:24,TEST_SECURITY_EVENT,HIGH,Automated security suite validation test,"int main() { system(""calc""); }"
+2026-10-06 21:22:11,TEST_SECURITY_EVENT,HIGH,Automated security suite validation test,"int main() { system(""calc""); }"
+2026-10-06 21:56:07,CPP,TEST_SECURITY_EVENT,HIGH,Automated security suite validation test,"int main() { system(""calc""); }"
+2026-10-09 15:01:39,CPP,TEST_SECURITY_EVENT,HIGH,Automated security suite validation test,"int main() { system(""calc""); }"

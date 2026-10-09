@@ -1,7 +1,7 @@
 """
 security_logger.py - Layer 13: Audit & Security Logging
 Maintains persistent audit records of security violations, input validation blocks,
-runtime crashes, and AI repair verification events.
+runtime crashes, and AI repair verification events across C++, Python, and Java.
 """
 
 import os
@@ -18,10 +18,10 @@ def _ensure_csv_headers():
     if not os.path.exists(SECURITY_LOG_CSV):
         with open(SECURITY_LOG_CSV, mode="w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
-            writer.writerow(["Timestamp", "Event_Type", "Severity", "Details", "Code_Snippet"])
+            writer.writerow(["Timestamp", "Language", "Event_Type", "Severity", "Details", "Code_Snippet"])
 
 
-def log_security_event(event_type: str, severity: str, details: str, code_snippet: str = "N/A"):
+def log_security_event(event_type: str, severity: str, details: str, code_snippet: str = "N/A", language: str = "cpp"):
     """
     Appends a security incident (e.g. INPUT_VALIDATION_BLOCK, GUARDRAIL_TRIGGER) to the security log.
     """
@@ -36,7 +36,7 @@ def log_security_event(event_type: str, severity: str, details: str, code_snippe
     try:
         with open(SECURITY_LOG_CSV, mode="a", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
-            writer.writerow([timestamp, event_type, severity, details, clean_snippet])
+            writer.writerow([timestamp, language.upper(), event_type, severity, details, clean_snippet])
     except Exception as e:
         print(f"[SECURITY_LOGGER ERROR] Failed to write to CSV: {e}")
 
@@ -47,13 +47,15 @@ def log_interaction_event(
     code_snippet: str = "N/A",
     error_category: str = "N/A",
     fixed_code: str = "N/A",
-    security_flag: str = "SAFE"
+    security_flag: str = "SAFE",
+    language: str = "cpp"
 ):
     """
     Appends a conversation turn with full security audit metadata to JSON history.
     """
     log_entry: dict[str, Any] = {
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "language": language,
         "error_category": error_category,
         "security_flag": security_flag,
         "code_snippet": code_snippet,
