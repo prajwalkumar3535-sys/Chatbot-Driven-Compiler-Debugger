@@ -38,13 +38,22 @@ LINUX_CRASH_SIGNALS = {
 }
 
 
+_DOCKER_STATUS_CACHE = {"ready": False, "last_check": 0.0}
+
 def is_docker_engine_ready() -> bool:
-    """Checks if Docker daemon is responsive."""
+    """Checks if Docker daemon is responsive with 5-second TTL cache."""
+    now = time.time()
+    if now - _DOCKER_STATUS_CACHE["last_check"] < 5.0:
+        return _DOCKER_STATUS_CACHE["ready"]
+
+    _DOCKER_STATUS_CACHE["last_check"] = now
     try:
-        res = subprocess.run(["docker", "info"], capture_output=True, text=True, timeout=3)
-        return res.returncode == 0
+        res = subprocess.run(["docker", "info"], capture_output=True, text=True, timeout=1.5)
+        _DOCKER_STATUS_CACHE["ready"] = (res.returncode == 0)
     except Exception:
-        return False
+        _DOCKER_STATUS_CACHE["ready"] = False
+
+    return _DOCKER_STATUS_CACHE["ready"]
 
 
 def _build_run_cmd(cfg: dict, sandbox_dir: str) -> list[str]:

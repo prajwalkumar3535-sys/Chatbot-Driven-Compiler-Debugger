@@ -18,6 +18,8 @@ SANDBOX_IMAGE = "cpp-sandbox"
 SANDBOX_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "sandbox_env"))
 
 
+import sys
+
 def ensure_sandbox_env():
     """Ensures isolated sandbox folder exists."""
     os.makedirs(SANDBOX_DIR, exist_ok=True)
@@ -55,8 +57,8 @@ def _compile_and_run_host(code: str, language: str = "cpp", stdin_data: str = ""
             f.write(code)
         try:
             proc = subprocess.run(
-                ["python", py_file],
-                input=stdin_data,
+                [sys.executable, py_file],
+                input=stdin_data if stdin_data else None,
                 capture_output=True,
                 text=True,
                 timeout=5,
@@ -120,9 +122,35 @@ def _compile_and_run_host(code: str, language: str = "cpp", stdin_data: str = ""
         with open(source_file, "w", encoding="utf-8") as f:
             f.write(code)
 
+        cpp_compiler = "g++"
+        if os.name == "nt":
+            candidate_compilers = [
+                r"C:\Program Files\LLVM\bin\clang++.exe",
+                shutil.which("clang++"),
+                shutil.which("g++")
+            ]
+            for c in candidate_compilers:
+                if c and os.path.exists(c):
+                    cpp_compiler = c
+                    break
+
         try:
+            compile_cmd = [cpp_compiler, "-g", source_file, "-o", executable]
+            if "clang" in cpp_compiler.lower() and os.path.exists(r"C:\MinGW\include"):
+                compile_cmd = [
+                    cpp_compiler,
+                    "--target=i686-pc-windows-gnu",
+                    r"-IC:\MinGW\lib\gcc\mingw32\6.3.0\include\c++",
+                    r"-IC:\MinGW\lib\gcc\mingw32\6.3.0\include\c++\mingw32",
+                    r"-IC:\MinGW\include",
+                    r"-LC:\MinGW\lib",
+                    source_file,
+                    "-o",
+                    executable
+                ]
+
             compile_process = subprocess.run(
-                ["g++", "-g", source_file, "-o", executable],
+                compile_cmd,
                 capture_output=True, 
                 text=True, 
                 timeout=10

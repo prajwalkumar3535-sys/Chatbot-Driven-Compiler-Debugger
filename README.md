@@ -1,74 +1,111 @@
-# Collaborative Multi-Agent Compiler & Debugger Platform
-An Automated Program Repair (APR) and programming education platform that securely diagnoses, repairs, and teaches code errors using a collaborative Multi-Agent team powered by **Microsoft Phi-3**, **Alibaba Qwen**, and **Meta Llama 3** models.
+# Collaborative Multi-Agent Sandbox Compiler & Debugger Platform
+
+A production-grade Automated Program Repair (APR) and cloud compiler platform styled after CodeChef and Programiz. Features isolated Docker sandboxing, high-precision Green Sandbox Metrics (energy & carbon tracking), and collaborative Multi-Agent intelligence powered by **Microsoft Phi-3**, **Alibaba Qwen**, and **Meta Llama 3** via Ollama.
 
 ---
 
 ## 🌟 Key Capabilities
-* **Multi-Model Support:** Native integration with **Microsoft Phi-3** (`phi3:mini`, `phi3:medium`), **Alibaba Qwen** (`qwen2.5:coder`, `qwen2.5-coder:1.5b`, `qwen2.5:latest`), and **Meta Llama** (`llama3.2:1b`, `llama3:latest`).
-* **Collaborative Multi-Agent Architecture:** Four specialized agents collaborating in a supervised pipeline with automated security rejection and iterative repair loops.
-* **Multi-Model Council (Consensus Mode):** Solves bugs simultaneously with Llama 3, Phi-3, and Qwen, compares patches side-by-side, and selects the optimal security-audited fix.
-* **Multi-Language Sandbox:** Secure sandboxed compilation and execution across **C++**, **Python**, and **Java**.
-* **13-Layer Defense-in-Depth:** Input validation, static security AST guardrails, memory protection, non-root isolated Docker containers, cgroup caps, output sanitization, and AI fix verification.
+* **Monaco Editor Core:** Full VS Code editor engine with syntax highlighting, auto-completion, font scaling, minimap toggle, and keyboard shortcuts (`Ctrl+Enter` to run).
+* **Multi-Language Sandboxing:** Secure sandboxed compilation and execution for **Python**, **C++**, and **Java** with full `stdin` standard input support.
+* **Multi-Model Council (Consensus APR):** Solves bugs simultaneously with Llama 3, Phi-3, and Qwen, streaming comparisons side-by-side with security-audited recommendations and one-click code patch application.
+* **Four Specialized AI Agents:**
+  - 🎓 **Tutor Mentor:** Explains root causes, invariants, and time/space complexity (Big-O).
+  - 🔍 **Detective Agent:** Pinpoints exact failure locations, tracebacks, and underlying mechanisms.
+  - 🛠️ **Repair Agent:** Generates clean, minimal, compile-ready bug fixes preserving original logic.
+  - 🛡️ **Security Sentinel:** Audits code for vulnerabilities, unsafe functions, and CWE/OWASP risks.
+* **Green Sandbox Metrics:** Measures run latency, memory consumption, energy consumed (Wh), and carbon footprint (g CO₂eq) alongside an Eco Score badge (`A+`, `A`, `B`, `C`).
+* **13-Layer Defense-in-Depth:** Input validation, AST guardrails, memory limits, non-root isolated Docker containers, cgroup caps, output sanitization, and AI fix verification.
 
 ---
 
-## 👥 Multi-Agent Platform Roles
+## 🏗️ Architecture
 
-```mermaid
-flowchart TD
-    UserCode[Buggy Code & Error Output] --> Detective[🔍 Diagnostic Agent\nMicrosoft Phi-3]
-    Detective --> Architect[🛠️ Repair Agent\nAlibaba Qwen 2.5 Coder]
-    Architect --> Sentinel[🛡️ Security Sentinel Agent\nMeta Llama 3 + 13-Layer Guardrail]
-    Sentinel -- Insecure Fix (Rejection Feedback) --> Architect
-    Sentinel -- Approved Fix --> Mentor[🎓 Tutor Agent\nPedagogical Mentor]
-    Mentor --> FinalOutput[Verified Code & Interactive Lesson]
+```
+┌────────────────────────────────────────────────────────┐
+│               Frontend: React + Vite + Monaco          │
+│  - 56px CodeChef-style Top Navbar with Live Status     │
+│  - Resizable Monaco Editor + Stdin/Output + Chat       │
+│  - Real-time SSE Token Streaming & Markdown Rendering  │
+└───────────────────────────▲────────────────────────────┘
+                            │ REST / SSE (port 8000)
+┌───────────────────────────▼────────────────────────────┐
+│                  Backend: FastAPI + Uvicorn            │
+│  - POST /api/run (Docker Sandbox + MinGW/Host Fallback)│
+│  - POST /api/chat/stream (SSE Multi-Agent & Council)   │
+│  - GET /api/models, /api/languages, /api/health        │
+└─────────────▲────────────────────────────▲─────────────┘
+              │ Sub-ms socket probe        │ Execution
+┌─────────────▼──────────────┐   ┌─────────▼─────────────┐
+│    Ollama LLM Engine       │   │ Docker Container Pool │
+│ - Microsoft Phi-3 Mini     │   │ - python-sandbox      │
+│ - Alibaba Qwen 2.5 Coder   │   │ - cpp-sandbox         │
+│ - Meta Llama 3             │   │ - java-sandbox        │
+└────────────────────────────┘   └───────────────────────┘
 ```
 
-1. **🔍 Diagnostic Agent (Error Detective):**
-   - *Default Model:* `phi3:mini` (Microsoft 3.8B Logic Engine)
-   - *Role:* Pinpoints line numbers, syntax mechanisms, memory faults, and underlying failure modes.
-2. **🛠️ Repair Agent (Code Architect):**
-   - *Default Model:* `qwen2.5:coder` (Alibaba State-of-the-Art Coding LLM)
-   - *Role:* Synthesizes minimal, idiomatic, compile-ready patches preserving original variable names and intent.
-3. **🛡️ Security Sentinel Agent (Auditor):**
-   - *Default Model:* `llama3.2:1b` + 13-Layer Security Pipeline
-   - *Role:* Intercepts OWASP/CWE violations (buffer overflows, command injections, format strings, unsafe pointers). If unsafe, triggers iterative re-synthesis back to the Repair Agent.
-4. **🎓 Tutor Agent (Pedagogical Mentor):**
-   - *Default Model:* `phi3:mini` / `llama3:latest`
-   - *Role:* Delivers structured lessons: "Why did this happen?", core invariant rules, and algorithmic complexity (Big-O).
-5. **🌐 MultiAgent Orchestrator:**
-   - Coordinates message passing, consensus evaluation, and specialized model routing.
+---
+
+## 🚀 Quick Start
+
+### 1. One-Click Launcher (PowerShell)
+
+In Windows PowerShell, run:
+```powershell
+.\start.ps1
+```
+This automatically boots:
+- **Backend:** `http://localhost:8000` (API Docs: `http://localhost:8000/docs`)
+- **Frontend:** `http://localhost:5173`
+
+### 2. Manual Startup
+
+**Backend:**
+```bash
+cd backend
+pip install -r requirements.txt
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+**Frontend:**
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
 ---
 
-## 🤖 Supported Models & Pull Commands
+## 🤖 Ollama Setup & Supported Models
 
-Ensure [Ollama](https://ollama.ai) is installed and running:
+Ensure [Ollama](https://ollama.ai) is installed and running on your system:
 
 ```bash
-# 1. Start Ollama
+# 1. Start Ollama service
 ollama serve
 
-# 2. Pull Microsoft Phi-3
+# 2. Pull Microsoft Phi-3 (Diagnostic Logic)
 ollama pull phi3:mini
-ollama pull phi3:medium
 
-# 3. Pull Alibaba Qwen 2.5 Coder
+# 3. Pull Alibaba Qwen 2.5 Coder (Repair & Synthesis)
 ollama pull qwen2.5:coder
-ollama pull qwen2.5-coder:1.5b
 
-# 4. Pull Meta Llama 3
+# 4. Pull Meta Llama 3 (Security Sentinel & Tutor)
 ollama pull llama3.2:1b
 ollama pull llama3
 ```
 
 ---
 
-## 🚀 Platform Modes in Web UI
+## 📡 API Reference
 
-1. **🤖 Multi-Agent Swarm:** The full 4-agent team runs sequentially. Displays interactive tabs for Detective findings, Architect code, Sentinel security verdict, and Mentor lessons.
-2. **🏛️ Multi-Model Council:** Simultaneously queries Meta Llama 3, Microsoft Phi-3, and Alibaba Qwen. Displays side-by-side comparison tabs with individual security audits.
-3. **⚡ Single-Model Direct Mode:** Fast direct inference with any chosen model.
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/run` | `POST` | Compiles & runs code in Docker sandbox; returns stdout, stderr, exit code, time, memory, energy, and carbon metrics. |
+| `/api/chat/stream` | `POST` | Server-Sent Events (SSE) streaming tokens for single agent or Multi-Model Council comparison. |
+| `/api/health` | `GET` | Health status of Ollama (sub-millisecond socket check) and Docker engine. |
+| `/api/models` | `GET` | Discovers installed Ollama models with capability tags and active presets. |
+| `/api/languages` | `GET` | Supported languages (Python, C++, Java), extensions, starter templates, and sample bugs. |
+| `/api/agents` | `GET` | Metadata, icons, default models, and system prompts for all four agents. |
 
 ---
 
@@ -85,21 +122,22 @@ ollama pull llama3
 
 ---
 
-## 🧪 Testing & Verification
+## 🧪 Testing
 
-1. Change directory:
+1. Backend test suite:
    ```bash
-   cd Chatbot-Driven-Compiler-Debugger
+   python backend/test_api.py
    ```
-2. Run the Multi-Agent Platform test suite:
+2. Frontend build verification:
+   ```bash
+   cd frontend
+   npm run build
+   ```
+3. Multi-Agent test suite:
    ```bash
    python tests/test_multiagent_platform.py
    ```
-3. Run the complete 13-layer security test suite:
+4. 13-Layer security suite:
    ```bash
    python test_all_security_layers.py
-   ```
-4. Start the interactive Streamlit Web UI:
-   ```bash
-   streamlit run app.py
    ```
