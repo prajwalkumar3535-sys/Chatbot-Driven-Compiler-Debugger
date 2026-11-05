@@ -3,6 +3,7 @@ import subprocess
 import requests
 import os
 import time
+import json
 
 from codecarbon import EmissionsTracker
 
@@ -17,49 +18,49 @@ from error_logger import log_error
 from lldb_engine import agentic_debug_loop 
 from security_logger import log_security_event
 
-import json
+# Multi-Agent Platform & Models (Llama, Phi-3, Qwen)
+from multiagent_platform import (
+    MODEL_REGISTRY,
+    DEFAULT_FAMILY_MODELS,
+    MultiAgentOrchestrator,
+    MultiAgentPlan,
+    is_ollama_online,
+    get_installed_ollama_models,
+    resolve_model_alias
+)
 
 # LLM config
-OLLAMA_URL = "http://localhost:11434/api/generate"
-OLLAMA_HEALTH_URL = "http://localhost:11434/api/tags"
-DEFAULT_MODEL = "llama3.2:1b"
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434/api/generate")
+OLLAMA_HEALTH_URL = os.environ.get("OLLAMA_TAGS_URL", "http://localhost:11434/api/tags")
+DEFAULT_MODEL = "qwen2.5:coder"
 
 
 def is_ollama_running() -> bool:
-    """Fast 2-second ping to check if Ollama server is up."""
-    try:
-        r = requests.get(OLLAMA_HEALTH_URL, timeout=2)
-        return r.status_code == 200
-    except Exception:
-        return False
+    """Fast check to verify if Ollama server is reachable."""
+    return is_ollama_online(timeout=1.5)
 
 
 def get_available_models():
-    """Detects available models in Ollama."""
-    try:
-        r = requests.get(OLLAMA_HEALTH_URL, timeout=2)
-        if r.status_code == 200:
-            models = [m.get("name", "") for m in r.json().get("models", [])]
-            if models:
-                return models
-    except Exception:
-        pass
-    return ["llama3.2:1b", "llama3"]
+    """Detects available models in Ollama or returns registered defaults."""
+    detected = get_installed_ollama_models()
+    if detected:
+        return detected
+    return list(MODEL_REGISTRY.keys())
 
 
 def get_ai_explanation(prompt, model_name=None):
     """Sends prompt to local Ollama model with fast streaming concatenation & timeout protection."""
+    model = model_name or st.session_state.get("selected_ai_model", DEFAULT_MODEL)
     if not is_ollama_running():
         return (
             "⚠️ **AI Assistant Offline** — Ollama is not running on this machine.\n\n"
             "To enable AI explanations and fixes, start Ollama:\n"
-            "```\nollama serve\n```\n"
-            "Then make sure the model is pulled:\n"
-            "```\nollama pull llama3.2:1b\n```\n"
-            "Once Ollama is running, re-submit your code to get AI feedback."
+            "```bash\nollama serve\n```\n"
+            f"And ensure the model is pulled:\n"
+            f"```bash\nollama pull {model}\n```\n"
+            "*(Operating in simulated multi-agent fallback mode)*"
         )
 
-    model = model_name or st.session_state.get("selected_ai_model", DEFAULT_MODEL)
     payload = {
         "model": model,
         "prompt": prompt,
@@ -88,14 +89,14 @@ def get_ai_explanation(prompt, model_name=None):
 
 def stream_ai_explanation(prompt, model_name=None):
     """Streams response from local Ollama model token-by-token for interactive real-time typing."""
+    model = model_name or st.session_state.get("selected_ai_model", DEFAULT_MODEL)
     if not is_ollama_running():
         yield (
-            "⚠️ **AI Assistant Offline** — Ollama is not running on this machine.\n\n"
-            "To enable AI explanations, run `ollama serve` in a terminal."
+            f"⚠️ **AI Assistant Offline** — Ollama is not running.\n\n"
+            f"Run `ollama serve` and `ollama pull {model}` in a terminal."
         )
         return
 
-    model = model_name or st.session_state.get("selected_ai_model", DEFAULT_MODEL)
     payload = {
         "model": model,
         "prompt": prompt,
@@ -146,7 +147,11 @@ def stop_and_save_metrics(tracker, start_t):
 
 
 # --- UI CONFIGURATION ---
-st.set_page_config(page_title="AI Multi-Language Sandbox Compiler & Debugger", layout="wide")
+st.set_page_config(
+    page_title="Multi-Agent Compiler & Debugger Platform",
+    page_icon="⚡",
+    layout="wide"
+)
 
 # Initialize Session State
 if "messages" not in st.session_state:
@@ -165,17 +170,38 @@ if "last_status" not in st.session_state:
     st.session_state.last_stdout = ""
     st.session_state.last_stderr = ""
     st.session_state.last_lang = "cpp"
+
 if "last_agent_log" not in st.session_state:
     st.session_state.last_agent_log = None
+
+if "last_multiagent_plan" not in st.session_state:
+    st.session_state.last_multiagent_plan = None
+
 if "green_metrics" not in st.session_state:
     st.session_state.green_metrics = None
 
-st.title("⚡ Chatbot-Driven Sandbox Compiler & Debugger")
-st.markdown("### Secure Multi-Language Code Execution Sandbox (C++ • Python • Java)")
+if "platform_mode" not in st.session_state:
+    st.session_state.platform_mode = "Multi-Agent Swarm"
 
-# --- LANGUAGE & MODEL SELECTOR BAR ---
-lang_col1, lang_col2, lang_col3 = st.columns([2, 2, 2])
-with lang_col1:
+if "selected_ai_model" not in st.session_state:
+    st.session_state.selected_ai_model = "qwen2.5:coder"
+
+if "agent_models" not in st.session_state:
+    st.session_state.agent_models = {
+        "diagnostic": "phi3:mini",
+        "repair": "qwen2.5:coder",
+        "security": "llama3.2:1b",
+        "tutor": "phi3:mini"
+    }
+
+# --- HEADER TITLE ---
+st.title("⚡ Multi-Agent Sandbox Compiler & Debugger")
+st.markdown("### Secure Multi-Language Sandbox with Collaborative Multi-Agent APR (Llama • Phi-3 • Qwen)")
+
+# --- CONTROL BAR ---
+c1, c2, c3, c4 = st.columns([1.5, 2.5, 2.5, 1.5])
+
+with c1:
     lang_display_options = ["C++", "Python", "Java"]
     lang_key_map = {"C++": "cpp", "Python": "python", "Java": "java"}
     inv_lang_map = {v: k for k, v in lang_key_map.items()}
@@ -184,25 +210,112 @@ with lang_col1:
     selected_display = st.selectbox("🌐 Language:", lang_display_options, index=lang_display_options.index(current_display))
     new_lang_key = lang_key_map[selected_display]
 
-    # Handle language change
     if new_lang_key != st.session_state.selected_language:
         st.session_state.selected_language = new_lang_key
         st.session_state.last_status = None
         st.session_state.last_agent_log = None
+        st.session_state.last_multiagent_plan = None
         st.rerun()
 
 current_lang = st.session_state.selected_language
 current_cfg = get_language_config(current_lang)
 
-with lang_col2:
-    model_labels = ["llama3.2:1b (⚡ Ultra Fast)", "llama3:latest (8B Deep)"]
-    model_values = ["llama3.2:1b", "llama3"]
-    default_idx = 0
-    selected_model_label = st.selectbox("🤖 AI Model:", model_labels, index=default_idx)
-    st.session_state.selected_ai_model = model_values[model_labels.index(selected_model_label)]
+with c2:
+    mode_options = [
+        "🤖 Multi-Agent Swarm (4 Specialized Agents)",
+        "🏛️ Multi-Model Council (Llama vs Phi-3 vs Qwen)",
+        "⚡ Single-Model Direct Mode"
+    ]
+    mode_map = {
+        "🤖 Multi-Agent Swarm (4 Specialized Agents)": "Multi-Agent Swarm",
+        "🏛️ Multi-Model Council (Llama vs Phi-3 vs Qwen)": "Multi-Model Council",
+        "⚡ Single-Model Direct Mode": "Single-Model Direct"
+    }
+    inv_mode_map = {v: k for k, v in mode_map.items()}
+    current_mode_label = inv_mode_map.get(st.session_state.platform_mode, mode_options[0])
+    selected_mode_label = st.selectbox("🎯 Platform Mode:", mode_options, index=mode_options.index(current_mode_label))
+    st.session_state.platform_mode = mode_map[selected_mode_label]
 
-with lang_col3:
-    st.info(f"🔒 **Sandbox:** `{current_cfg['docker_image']}` | **RAM:** {current_cfg['memory_limit']}")
+with c3:
+    model_choices = [
+        ("qwen2.5:coder", "💻 Qwen 2.5 Coder 7B (Alibaba SOTA)"),
+        ("qwen2.5-coder:1.5b", "⚡ Qwen 2.5 Coder 1.5B (Fast Coder)"),
+        ("phi3:mini", "🔬 Phi-3 Mini 3.8B (Microsoft Logic)"),
+        ("phi3:medium", "🧠 Phi-3 Medium 14B (Microsoft Deep)"),
+        ("llama3.2:1b", "🦙 Llama 3.2 1B (Meta Ultra-Fast)"),
+        ("llama3:latest", "🦙 Llama 3 8B (Meta Deep Reasoning)")
+    ]
+    model_vals = [m[0] for m in model_choices]
+    model_labels = [m[1] for m in model_choices]
+    
+    curr_mod = st.session_state.selected_ai_model
+    def_idx = model_vals.index(curr_mod) if curr_mod in model_vals else 0
+    selected_label = st.selectbox("🤖 Primary Model / Family:", model_labels, index=def_idx)
+    st.session_state.selected_ai_model = model_vals[model_labels.index(selected_label)]
+
+with c4:
+    ollama_up = is_ollama_running()
+    status_badge = "🟢 Ollama Online" if ollama_up else "🔴 Ollama Offline"
+    st.markdown(f"**Status:** `{status_badge}`")
+    st.caption(f"Sandbox: `{current_cfg['docker_image']}`")
+
+# --- EXPANDABLE MULTI-AGENT SETTINGS & MODEL SETUP ---
+with st.expander("⚙️ Multi-Agent Settings, Model Routing & Ollama Setup Guide", expanded=False):
+    m_col1, m_col2 = st.columns([1.5, 1.5])
+    with m_col1:
+        st.markdown("#### 👥 Agent Model Assignments")
+        st.caption("Customize which specialized model powers each agent in the Swarm:")
+        
+        diag_choice = st.selectbox(
+            "🔍 Diagnostic Agent (Detective):",
+            model_vals,
+            index=model_vals.index(st.session_state.agent_models.get("diagnostic", "phi3:mini")),
+            key="cfg_diag_model"
+        )
+        rep_choice = st.selectbox(
+            "🛠️ Repair Agent (Architect):",
+            model_vals,
+            index=model_vals.index(st.session_state.agent_models.get("repair", "qwen2.5:coder")),
+            key="cfg_repair_model"
+        )
+        sec_choice = st.selectbox(
+            "🛡️ Security Sentinel (Auditor):",
+            model_vals,
+            index=model_vals.index(st.session_state.agent_models.get("security", "llama3.2:1b")),
+            key="cfg_sec_model"
+        )
+        tutor_choice = st.selectbox(
+            "🎓 Tutor Agent (Mentor):",
+            model_vals,
+            index=model_vals.index(st.session_state.agent_models.get("tutor", "phi3:mini")),
+            key="cfg_tutor_model"
+        )
+        st.session_state.agent_models = {
+            "diagnostic": diag_choice,
+            "repair": rep_choice,
+            "security": sec_choice,
+            "tutor": tutor_choice
+        }
+
+    with m_col2:
+        st.markdown("#### 📥 Ollama Quick Pull Reference")
+        st.markdown("""
+Run the following commands in your terminal to enable local inference for all models:
+```bash
+# Start Ollama service
+ollama serve
+
+# Pull Microsoft Phi-3
+ollama pull phi3:mini
+
+# Pull Alibaba Qwen 2.5 Coder
+ollama pull qwen2.5:coder
+
+# Pull Meta Llama 3
+ollama pull llama3.2:1b
+```
+*(If Ollama is offline, the platform provides automated rule scanning and structured simulation)*
+""")
 
 col1, col2 = st.columns(2)
 
@@ -215,20 +328,27 @@ with col1:
     # Text editor for active language
     editor_key = f"code_editor_{current_lang}"
     default_lang_code = st.session_state.code_per_lang.get(current_lang, current_cfg["default_code"])
-    user_code = st.text_area(f"Write your {current_cfg['display_name']} code here:", value=default_lang_code, height=350, key=editor_key)
+    user_code = st.text_area(f"Write your {current_cfg['display_name']} code here:", value=default_lang_code, height=340, key=editor_key)
     st.session_state.code_per_lang[current_lang] = user_code
 
     # Optional Stdin input area
     with st.expander("📥 Standard Input (stdin) - Optional"):
-        stdin_input = st.text_area("Provide input lines for your program:", value="", height=80, key=f"stdin_{current_lang}")
+        stdin_input = st.text_area("Provide input lines for your program:", value="", height=70, key=f"stdin_{current_lang}")
 
-    col1_a, col1_b = st.columns([1.5, 2.5])
+    col1_a, col1_b, col1_c = st.columns([1.5, 1.8, 1.5])
     with col1_a:
         action_label = "Compile & Run" if current_cfg["needs_compile"] else "Run Code"
-        run_btn = st.button(f"▶️ {action_label}", type="primary")
+        run_btn = st.button(f"▶️ {action_label}", type="primary", use_container_width=True)
     with col1_b:
-        if st.button("🗑️ Clear Chat History"):
+        if st.session_state.last_multiagent_plan and st.session_state.last_multiagent_plan.final_code:
+            if st.button("📥 Apply Fix to Editor", use_container_width=True):
+                st.session_state.code_per_lang[current_lang] = st.session_state.last_multiagent_plan.final_code
+                st.success("✅ Fix loaded into editor!")
+                st.rerun()
+    with col1_c:
+        if st.button("🗑️ Clear History", use_container_width=True):
             st.session_state.messages = []
+            st.session_state.last_multiagent_plan = None
             st.rerun()
 
     if run_btn:
@@ -276,72 +396,112 @@ with col1:
             if return_code == 0:
                 # --- PATH A: SUCCESS ---
                 st.success("✅ Execution Successful!")
-                st.code(stdout or "(No output generated)", language="text")
+                st.session_state.last_multiagent_plan = None
                 
-                with st.spinner("Checking code logic with AI Tutor..."):
-                    logic_prompt = f"Review this {current_cfg['display_name']} code for logic correctness and style. If it's optimal, say so briefly.\n```{current_lang}\n{user_code}\n```"
-                    logic_feedback = get_ai_explanation(logic_prompt)
+                with st.spinner(f"Checking code logic with {st.session_state.selected_ai_model}..."):
+                    logic_prompt = f"Review this {current_cfg['display_name']} code for logic correctness, optimal complexity, and clean style. Keep review concise.\n```{current_lang}\n{user_code}\n```"
+                    logic_feedback = get_ai_explanation(logic_prompt, model_name=st.session_state.selected_ai_model)
                 
-                success_msg = f"**{current_cfg['display_name']} code executed successfully!**\n\n**AI Logic Feedback:**\n{logic_feedback}"
+                success_msg = f"**✅ {current_cfg['display_name']} code executed successfully!**\n\n**🎓 Mentor Code Review ({st.session_state.selected_ai_model}):**\n{logic_feedback}"
                 st.session_state.messages.append({"role": "assistant", "content": success_msg})
                 log_interaction("SYSTEM (Success)", success_msg, user_code, "Logic Check")
                 stop_and_save_metrics(tracker, start_time)
                 st.rerun()
 
-            elif return_code == 2:
-                # --- PATH B: RUNTIME ERROR / CRASH ---
-                st.error(f"⚠️ Runtime Error Detected in {current_cfg['display_name']} program!")
-                
-                # If C++ crash and lldb is available, trigger agentic LLDB loop
-                if current_lang == "cpp" and os.name != "nt":
+            else:
+                # --- PATH B & C: RUNTIME OR COMPILATION ERROR ---
+                is_runtime = (return_code == 2)
+                err_type_str = "Runtime Crash" if is_runtime else "Compilation / Syntax Error"
+                log_error(stderr, user_code)
+
+                # Initialize Multi-Agent Orchestrator
+                orchestrator = MultiAgentOrchestrator(
+                    diagnostic_model=st.session_state.agent_models["diagnostic"],
+                    repair_model=st.session_state.agent_models["repair"],
+                    security_model=st.session_state.agent_models["security"],
+                    tutor_model=st.session_state.agent_models["tutor"]
+                )
+
+                # If C++ crash and lldb is available on host/docker
+                lldb_info = ""
+                if is_runtime and current_lang == "cpp" and os.name != "nt":
                     with st.spinner("🤖 AI Agent is inspecting memory with LLDB..."):
-                        final_diagnosis, agent_log = agentic_debug_loop(
+                        lldb_info, agent_log = agentic_debug_loop(
                             cpp_code=user_code, 
                             crash_output=stderr, 
                             executable_path="./temp_program"
                         )
-                    st.session_state.last_agent_log = agent_log
-                    initial_msg = f"**🚨 Runtime Crash Detected (C++)**\n\n**Agentic LLDB Diagnosis:**\n{final_diagnosis}"
-                else:
-                    category, strategy = classify_error(stderr, language=current_lang)
-                    prompt = get_diagnostic_prompt(category, strategy, user_code, stderr, language=current_lang)
-                    with st.spinner(f"🤖 AI is analyzing the {current_cfg['display_name']} runtime error..."):
-                        explanation = get_ai_explanation(prompt)
-                    is_fix_safe, suggested_code, security_status = validate_ai_fix(explanation, language=current_lang)
-                    initial_msg = f"**Detected Runtime Error:** {category}\n\n{explanation}"
+                        st.session_state.last_agent_log = agent_log
 
-                st.session_state.messages.append({"role": "assistant", "content": initial_msg})
-                log_interaction("SYSTEM (Runtime Crash)", initial_msg, user_code, "Runtime Error")
-                stop_and_save_metrics(tracker, start_time)
-                st.rerun()
+                full_err_context = stderr + (f"\n\n[LLDB Context]:\n{lldb_info}" if lldb_info else "")
 
-            else:
-                # --- PATH C: COMPILE / SYNTAX ERROR ---
-                st.error(f"❌ {current_cfg['display_name']} Compilation / Syntax Error!")
-                log_error(stderr, user_code)
-                
-                category, strategy = classify_error(stderr, language=current_lang)
-                prompt = get_diagnostic_prompt(category, strategy, user_code, stderr, language=current_lang)
-                
-                with st.spinner(f"🤖 AI is analyzing the {current_cfg['display_name']} error..."):
-                    explanation = get_ai_explanation(prompt)
-                
-                is_fix_safe, suggested_code, security_status = validate_ai_fix(explanation, language=current_lang)
-                initial_msg = f"**Detected:** {category}\n\n{explanation}"
-                
-                st.session_state.messages.append({"role": "assistant", "content": initial_msg})
-                log_interaction("SYSTEM (Compile Failed)", initial_msg, user_code, category, suggested_code or "N/A")
-                
-                if is_fix_safe and suggested_code:
+                # MULTI-AGENT EXECUTION MODES
+                if st.session_state.platform_mode == "Multi-Agent Swarm":
+                    with st.spinner("🤖 Multi-Agent Swarm Collaborating: Detective 🔍 ➔ Architect 🛠️ ➔ Sentinel 🛡️ ➔ Mentor 🎓..."):
+                        plan = orchestrator.run_collaborative_swarm(
+                            code=user_code,
+                            error=full_err_context,
+                            language=current_lang,
+                            model_overrides=st.session_state.agent_models
+                        )
+                        st.session_state.last_multiagent_plan = plan
+
+                    status_sym = "✅ Secure Fix Verified" if plan.is_secure else "⚠️ Fix requires caution"
+                    summary_msg = (
+                        f"### 🤖 Multi-Agent Swarm Report ({err_type_str})\n"
+                        f"- **🔍 Detective:** {plan.diagnostic_report.metadata.get('category', 'Identified')}\n"
+                        f"- **🛠️ Architect:** Generated patch using `{st.session_state.agent_models['repair']}`\n"
+                        f"- **🛡️ Sentinel:** {status_sym}\n\n"
+                        f"#### 🎓 Pedagogical Lesson:\n{plan.tutor_feedback.content}"
+                    )
                     st.session_state.messages.append({
-                        "role": "assistant", 
-                        "content": "✅ " + security_status,
-                        "code_expander": suggested_code,
+                        "role": "assistant",
+                        "content": summary_msg,
+                        "code_expander": plan.final_code,
                         "expander_lang": current_lang
                     })
+
+                elif st.session_state.platform_mode == "Multi-Model Council":
+                    with st.spinner("🏛️ Multi-Model Council Evaluating Across Llama 3, Phi-3, and Qwen 2.5..."):
+                        plan = orchestrator.run_multi_model_council(
+                            code=user_code,
+                            error=full_err_context,
+                            language=current_lang
+                        )
+                        st.session_state.last_multiagent_plan = plan
+
+                    council_msg = (
+                        f"### 🏛️ Multi-Model Council Evaluation ({err_type_str})\n"
+                        f"Analyzed code across **Meta Llama 3**, **Microsoft Phi-3**, and **Alibaba Qwen**:\n\n"
+                        f"#### 🎓 Council Consensus Lesson:\n{plan.tutor_feedback.content}"
+                    )
+                    st.session_state.messages.append({
+                        "role": "assistant",
+                        "content": council_msg,
+                        "code_expander": plan.final_code,
+                        "expander_lang": current_lang
+                    })
+
                 else:
-                    if suggested_code:
-                        st.session_state.messages.append({"role": "assistant", "content": "🚫 AI generated insecure code! " + security_status})
+                    # Single Model Direct Mode
+                    with st.spinner(f"🤖 {st.session_state.selected_ai_model} is analyzing the {err_type_str}..."):
+                        category, strategy = classify_error(stderr, language=current_lang)
+                        prompt = get_diagnostic_prompt(category, strategy, user_code, full_err_context, language=current_lang)
+                        explanation = get_ai_explanation(prompt, model_name=st.session_state.selected_ai_model)
+                        is_fix_safe, suggested_code, security_status = validate_ai_fix(explanation, language=current_lang)
+
+                        single_msg = f"**Detected:** {category}\n\n{explanation}"
+                        st.session_state.messages.append({"role": "assistant", "content": single_msg})
+                        if is_fix_safe and suggested_code:
+                            st.session_state.messages.append({
+                                "role": "assistant", 
+                                "content": "✅ " + security_status,
+                                "code_expander": suggested_code,
+                                "expander_lang": current_lang
+                            })
+                        elif suggested_code:
+                            st.session_state.messages.append({"role": "assistant", "content": "🚫 Insecure pattern: " + security_status})
+
                 stop_and_save_metrics(tracker, start_time)
                 st.rerun()
 
@@ -352,17 +512,59 @@ with col1:
         st.subheader(f"🖥️ Terminal Output ({last_lang_name})")
         
         if st.session_state.last_status == 0:
-            st.success(f"✅ Status: Success (Exit Code 0)")
+            st.success("✅ Status: Success (Exit Code 0)")
             st.code(st.session_state.last_stdout or "(No output generated)", language="text")
         elif st.session_state.last_status == 2:
-            st.error(f"⚠️ Status: Runtime Error / Crash")
+            st.error("⚠️ Status: Runtime Error / Crash")
             if st.session_state.last_stdout:
                 st.markdown("**Output before error:**")
                 st.code(st.session_state.last_stdout, language="text")
             st.code(st.session_state.last_stderr, language="text")
         else:
-            st.error(f"❌ Status: Compilation / Syntax Error")
+            st.error("❌ Status: Compilation / Syntax Error")
             st.code(st.session_state.last_stderr, language="text")      
+
+    # MULTI-AGENT TRANSPARENCY VISUALIZER
+    if st.session_state.last_multiagent_plan:
+        plan = st.session_state.last_multiagent_plan
+        st.markdown("---")
+        st.subheader(f"🤖 Multi-Agent Collaboration Panel ({plan.execution_mode.upper()})")
+
+        if plan.execution_mode == "swarm":
+            t1, t2, t3, t4 = st.tabs([
+                "🔍 Diagnostic Detective",
+                "🛠️ Repair Architect",
+                "🛡️ Security Sentinel",
+                "🎓 Pedagogical Mentor"
+            ])
+            with t1:
+                st.markdown(f"**Model:** `{plan.diagnostic_report.model}` | **Latency:** `{plan.diagnostic_report.metadata.get('latency_sec', 0)}s`")
+                st.markdown(plan.diagnostic_report.content)
+            with t2:
+                st.markdown(f"**Model:** `{plan.repair_proposal.model}` | **Latency:** `{plan.repair_proposal.metadata.get('latency_sec', 0)}s`")
+                st.markdown(plan.repair_proposal.content)
+                if plan.final_code:
+                    st.code(plan.final_code, language=current_lang)
+            with t3:
+                st.markdown(f"**Audit Status:** `{plan.security_verdict.status.upper()}` | **Defense:** 13-Layer Guardrail")
+                st.markdown(plan.security_verdict.content)
+            with t4:
+                st.markdown(f"**Model:** `{plan.tutor_feedback.model}`")
+                st.markdown(plan.tutor_feedback.content)
+
+        elif plan.execution_mode == "council":
+            c_tabs = st.tabs(["🦙 Meta Llama 3", "🔬 Microsoft Phi-3", "💻 Alibaba Qwen", "🎓 Council Takeaway"])
+            idx = 0
+            for family_name, proposal in plan.council_proposals.items():
+                with c_tabs[idx]:
+                    st.markdown(f"**Model:** `{proposal['model']}` | **Secure:** `{'✅ Passed' if proposal['is_secure'] else '❌ Rejected'}`")
+                    st.markdown(proposal["repair"].content)
+                    if proposal["extracted_code"]:
+                        st.code(proposal["extracted_code"], language=current_lang)
+                    st.info(proposal["audit"].content)
+                idx += 1
+            with c_tabs[3]:
+                st.markdown(plan.tutor_feedback.content)
 
     # AGENTIC LLDB BRAIN LOG (if ran)
     if st.session_state.last_agent_log:
@@ -385,9 +587,15 @@ with col1:
 # RIGHT COLUMN: THE MULTI-TURN AI CHAT
 # ============================================================
 with col2:
-    st.subheader(f"💬 AI Tutor Chat ({current_cfg['display_name']})")
+    st.subheader(f"💬 Multi-Agent AI Chat ({current_cfg['display_name']})")
     
-    chat_container = st.container(height=520)
+    agent_target_choice = st.radio(
+        "Direct Question To:",
+        ["🎓 Tutor Mentor", "🔍 Detective Agent", "🛠️ Repair Agent", "🛡️ Security Sentinel"],
+        horizontal=True
+    )
+
+    chat_container = st.container(height=500)
     
     with chat_container:
         if len(st.session_state.messages) == 0:
@@ -397,25 +605,40 @@ with col2:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
                 
-                if "code_expander" in msg:
+                if "code_expander" in msg and msg["code_expander"]:
                     exp_lang = msg.get("expander_lang", current_lang)
                     with st.expander(f"View Verified {get_display_name(exp_lang)} Code"):
                         st.code(msg["code_expander"], language=exp_lang)
                 
-    if follow_up := st.chat_input(f"Ask a question about your {current_cfg['display_name']} code:"):
-        st.session_state.messages.append({"role": "user", "content": follow_up})
+    if follow_up := st.chat_input(f"Ask {agent_target_choice} about your {current_cfg['display_name']} code:"):
+        st.session_state.messages.append({"role": "user", "content": f"[{agent_target_choice}] {follow_up}"})
         with chat_container:
             with st.chat_message("user"):
-                st.markdown(follow_up)
+                st.markdown(f"**{agent_target_choice}:** {follow_up}")
                 
-        conversation_history = f"You are a helpful {current_cfg['display_name']} tutor. The user is currently working on this code:\n```{current_lang}\n{user_code}\n```\n\nHere is the recent conversation:\n"
+        # Determine model for chat routing
+        chat_model = st.session_state.selected_ai_model
+        if "Detective" in agent_target_choice:
+            chat_model = st.session_state.agent_models.get("diagnostic", "phi3:mini")
+            role_desc = "You are the Diagnostic Detective Agent. Pinpoint bugs, compiler diagnostics, and memory faults."
+        elif "Repair" in agent_target_choice:
+            chat_model = st.session_state.agent_models.get("repair", "qwen2.5:coder")
+            role_desc = "You are the Repair Architect Agent. Suggest clean, minimal code fixes with proper syntax."
+        elif "Security" in agent_target_choice:
+            chat_model = st.session_state.agent_models.get("security", "llama3.2:1b")
+            role_desc = "You are the Security Sentinel Agent. Review code for buffer overflows, process injection, format string bugs, and memory safety."
+        else:
+            chat_model = st.session_state.agent_models.get("tutor", "phi3:mini")
+            role_desc = f"You are a friendly, encouraging {current_cfg['display_name']} Tutor Mentor."
+
+        conversation_history = f"{role_desc} The user is working on this {current_cfg['display_name']} code:\n```{current_lang}\n{user_code}\n```\n\nRecent context:\n"
         for m in st.session_state.messages[-4:]: 
             conversation_history += f"{m['role'].capitalize()}: {m['content']}\n"
-        conversation_history += f"Now, respond to the user's latest question about {current_cfg['display_name']} concisely."
+        conversation_history += f"\nRespond concisely to the user's latest query: {follow_up}"
 
         with chat_container:
             with st.chat_message("assistant"):
-                stream_gen = stream_ai_explanation(conversation_history)
+                stream_gen = stream_ai_explanation(conversation_history, model_name=chat_model)
                 ai_reply = st.write_stream(stream_gen)
                     
         st.session_state.messages.append({"role": "assistant", "content": ai_reply})
@@ -423,6 +646,6 @@ with col2:
             user_prompt=follow_up,
             llm_response=ai_reply,
             code_snippet=user_code,
-            error_category="Follow-up Chat", 
+            error_category=f"Follow-up Chat ({agent_target_choice})", 
             fixed_code="N/A"
         )
