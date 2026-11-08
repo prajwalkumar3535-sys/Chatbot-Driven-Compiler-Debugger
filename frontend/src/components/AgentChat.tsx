@@ -14,7 +14,8 @@ import {
   ArrowRight,
   ShieldCheck,
   Layers,
-  Bot
+  Bot,
+  GitFork
 } from 'lucide-react';
 import type { Agent, AgentId, ChatMessage, PlatformMode } from '../lib/types';
 import { toast } from 'sonner';
@@ -132,15 +133,25 @@ export const AgentChat: React.FC<AgentChatProps> = ({
           </div>
         )}
 
-        {messages.length > 0 && (
-          <button
-            onClick={() => setShowClearConfirm(true)}
-            title="Clear Chat History"
-            className="p-1.5 text-slate-400 hover:text-slate-100 hover:bg-dark-hover rounded transition-colors ml-2 shrink-0"
+        <div className="flex items-center space-x-2 shrink-0 ml-2">
+          <span
+            className="hidden sm:flex items-center space-x-1 px-1.5 py-0.5 rounded text-[10px] font-mono bg-cyan-500/10 text-cyan-300 border border-cyan-500/20"
+            title="Abstract Syntax Tree generator actively passes syntax hierarchy to LLM for faster detection"
           >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        )}
+            <GitFork className="w-3 h-3 text-cyan-400" />
+            <span>AST Active</span>
+          </span>
+
+          {messages.length > 0 && (
+            <button
+              onClick={() => setShowClearConfirm(true)}
+              title="Clear Chat History"
+              className="p-1.5 text-slate-400 hover:text-slate-100 hover:bg-dark-hover rounded transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Confirmation Dialog for Clearing Chat */}

@@ -1,7 +1,7 @@
 """
 routers/chat.py - Real-Time Streaming Multi-Agent & Multi-Model Council SSE Endpoint
-Streams token-by-token reasoning for all 4 agents (Tutor, Detective, Repair, Sentinel)
-and coordinates Multi-Model Council evaluations across Llama 3, Phi-3, and Qwen 2.5.
+Enhanced with AST Generator for instant structural context & syntax tree injection,
+and dynamic model resolution to prevent 404 errors across local Ollama LLMs.
 """
 
 import sys
@@ -18,7 +18,8 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from app.ollama_client import stream_ollama_response, check_ollama_health
+from app.ollama_client import stream_ollama_response, check_ollama_health, resolve_best_model
+from app.ast_generator import generate_ast_analysis
 from multiagent_platform import (
     MODEL_REGISTRY,
     DEFAULT_FAMILY_MODELS,
@@ -51,25 +52,42 @@ class ChatStreamRequest(BaseModel):
 async def stream_chat(req: ChatStreamRequest):
     """
     Streams multi-agent tokens via Server-Sent Events (SSE).
-    Supports Single-Agent conversation and Multi-Model Council synthesis.
+    Injects AST syntax tree into agent prompts for high-speed fault localization.
+    Automatically resolves local Ollama models to prevent 404 errors.
     """
     lang = (req.language or "cpp").lower()
     code = req.code or ""
     error = req.last_run_output or ""
     user_query = req.messages[-1].content if req.messages else "Please review this code."
 
+    # Generate AST Analysis for LLM structural grounding
+    ast_data = generate_ast_analysis(code, language=lang)
+    ast_block = ast_data.get("ast_prompt_block", "")
+
     async def event_generator():
+        # First event: Emit parsed AST summary
+        yield {
+            "event": "ast_ready",
+            "data": json.dumps({
+                "syntax_valid": ast_data.get("syntax_valid", True),
+                "summary": ast_data.get("summary", ""),
+                "node_count": ast_data.get("node_count", 0),
+                "control_flow": ast_data.get("control_flow", {})
+            })
+        }
+
         # === MODE 1: MULTI-MODEL COUNCIL MODE ===
         if req.mode == "council":
             yield {
                 "event": "council_start",
-                "data": json.dumps({"status": "starting", "message": "Convening Multi-Model Council..."})
+                "data": json.dumps({"status": "starting", "message": "Convening Multi-Model Council with AST Context..."})
             }
 
+            # Dynamically resolve models to local installed candidates
             council_targets = [
-                ("Meta Llama 3", "llama3.2:1b"),
-                ("Microsoft Phi-3", "phi3:mini"),
-                ("Alibaba Qwen", "qwen2.5:coder")
+                ("Meta Llama", resolve_best_model("llama")),
+                ("Microsoft Phi-3", resolve_best_model("phi")),
+                ("Alibaba Qwen", resolve_best_model("qwen"))
             ]
 
             collected_proposals = {}
@@ -83,15 +101,23 @@ async def stream_chat(req: ChatStreamRequest):
                 lang_tag = "python" if lang in ("python", "py") else ("java" if lang == "java" else "cpp")
                 council_prompt = f"""You are participating in the Multi-Model Program Repair Council.
 Language: {lang.upper()}
-Original Code:
+
+Original Source Code:
 ```{lang}
 {code}
 ```
-Error Output:
+
+Compiler / Runtime Output:
 {error}
+
+{ast_block}
+
 User Query: {user_query}
 
-Provide your suggested fix and brief explanation. Enclose complete working code in ```{lang_tag} ... ``` code block."""
+TASK:
+1. Use the provided Abstract Syntax Tree (AST) to pinpoint the exact failure point.
+2. Provide your concise diagnosis and suggested fix.
+3. Enclose complete, working, compile-ready code in ```{lang_tag} ... ``` code block."""
 
                 model_text = []
                 async for token in stream_ollama_response(council_prompt, model=mod, temperature=0.2):
@@ -124,19 +150,24 @@ Provide your suggested fix and brief explanation. Enclose complete working code 
             # Final Council Consensus Synthesis
             yield {
                 "event": "consensus_start",
-                "data": json.dumps({"message": "Synthesizing Council Consensus..."})
+                "data": json.dumps({"message": "Synthesizing Council Consensus with AST Guidance..."})
             }
 
             consensus_prompt = f"""You are the Multi-Model Council Moderator.
 Language: {lang.upper()}
+
 Buggy Code:
 ```{lang}
 {code}
 ```
-We received proposals from Meta Llama 3, Microsoft Phi-3, and Alibaba Qwen.
-Summarize the agreed root cause, highlight the safest fix, and give the student a concise takeaway."""
 
-            async for token in stream_ollama_response(consensus_prompt, model="phi3:mini", temperature=0.2):
+{ast_block}
+
+Proposals received from Meta Llama, Microsoft Phi-3, and Alibaba Qwen.
+Summarize the consensus root cause based on the AST, select the safest fix, and give the student a concise actionable takeaway."""
+
+            moderator_mod = resolve_best_model("phi")
+            async for token in stream_ollama_response(consensus_prompt, model=moderator_mod, temperature=0.2):
                 yield {
                     "event": "consensus_token",
                     "data": json.dumps({"token": token})
@@ -150,19 +181,19 @@ Summarize the agreed root cause, highlight the safest fix, and give the student 
         selected_model = req.model
 
         if agent_id == "detective":
-            prompt = _build_detective_prompt(lang, code, error, user_query)
-            default_mod = "phi3:mini"
+            prompt = _build_detective_prompt(lang, code, error, user_query, ast_block)
+            default_mod = resolve_best_model("phi")
         elif agent_id == "repair":
-            prompt = _build_repair_prompt(lang, code, error, user_query)
-            default_mod = "qwen2.5:coder"
+            prompt = _build_repair_prompt(lang, code, error, user_query, ast_block)
+            default_mod = resolve_best_model("qwen")
         elif agent_id == "security":
-            prompt = _build_security_prompt(lang, code, error, user_query)
-            default_mod = "llama3.2:1b"
+            prompt = _build_security_prompt(lang, code, error, user_query, ast_block)
+            default_mod = resolve_best_model("llama")
         else:
-            prompt = _build_tutor_prompt(lang, code, error, user_query, req.messages)
-            default_mod = "phi3:mini"
+            prompt = _build_tutor_prompt(lang, code, error, user_query, req.messages, ast_block)
+            default_mod = resolve_best_model("phi")
 
-        active_model = resolve_model_alias(selected_model) if selected_model else default_mod
+        active_model = resolve_best_model(selected_model) if selected_model else default_mod
 
         yield {
             "event": "agent_start",
@@ -196,10 +227,10 @@ Summarize the agreed root cause, highlight the safest fix, and give the student 
 
 
 # =====================================================================
-# AGENT PROMPT BUILDERS (REUSING WORKING PRODUCTION PROMPTS)
+# AGENT PROMPT BUILDERS (WITH AST INJECTION)
 # =====================================================================
 
-def _build_detective_prompt(lang: str, code: str, error: str, query: str) -> str:
+def _build_detective_prompt(lang: str, code: str, error: str, query: str, ast_block: str) -> str:
     category, strategy = classify_error(error, language=lang)
     return f"""You are the Diagnostic Detective Agent in a multi-agent compiler platform.
 Language: {lang.upper()}
@@ -212,23 +243,25 @@ Teaching Strategy: {strategy}
 --- COMPILER / RUNTIME OUTPUT ---
 {error}
 
+{ast_block}
+
 User Question: {query}
 
 TASK:
-1. Identify the exact line number(s) and syntax/semantic cause of failure.
-2. Formulate a crisp, technical diagnosis for the student.
-3. Keep it concise, structured, and free of conversational filler.
+1. Use the Abstract Syntax Tree (AST) above to pinpoint the exact failure line and scope.
+2. If the parser flagged a syntax error in the AST, explain the exact token or delimiter issue immediately.
+3. Formulate a crisp, technical diagnosis for the student.
 
 Format as:
 ### FAULT LOCALIZATION
-- Line / Construct: <line number or function>
-- Root Cause: <one sentence description>
+- Line / Scope: <line number or function/block from AST>
+- Root Cause: <one sentence technical cause>
 
 ### TECHNICAL DIAGNOSIS
-<2-3 concise bullet points explaining why the compiler or runtime failed>"""
+<2-3 concise bullet points explaining why the code failed>"""
 
 
-def _build_repair_prompt(lang: str, code: str, error: str, query: str) -> str:
+def _build_repair_prompt(lang: str, code: str, error: str, query: str, ast_block: str) -> str:
     lang_tag = "python" if lang in ("python", "py") else ("java" if lang == "java" else "cpp")
     return f"""You are the Repair Agent in a multi-agent program repair platform.
 Language: {lang.upper()}
@@ -239,11 +272,12 @@ Language: {lang.upper()}
 --- COMPILER / RUNTIME ERROR ---
 {error}
 
+{ast_block}
+
 User Request: {query}
 
 TASK:
-Fix all compilation and runtime errors.
-Preserve the user's original logic, variable naming, and style.
+Fix all compilation and runtime errors using the AST context to preserve defined functions, classes, and scopes.
 DO NOT introduce any dangerous functions (system, popen, gets, strcpy, unsafe pointers, command injections).
 Output the COMPLETE working code enclosed in ```{lang_tag} ... ``` code fences.
 
@@ -256,7 +290,7 @@ Output the COMPLETE working code enclosed in ```{lang_tag} ... ``` code fences.
 ```"""
 
 
-def _build_security_prompt(lang: str, code: str, error: str, query: str) -> str:
+def _build_security_prompt(lang: str, code: str, error: str, query: str, ast_block: str) -> str:
     return f"""You are the Security Sentinel Agent.
 Enforces 13-layer defense checking memory vulnerabilities, buffer overflows, process injection, format string bugs, and dangerous APIs.
 Language: {lang.upper()}
@@ -267,19 +301,21 @@ Language: {lang.upper()}
 --- COMPILER / RUNTIME CONTEXT ---
 {error}
 
+{ast_block}
+
 User Query: {query}
 
 TASK:
-Perform static security audit. Flag any CWE-119, CWE-78, buffer overflows, or unsanitized system calls.
+Perform static security audit using the AST call expressions and symbols. Flag any CWE-119, CWE-78, buffer overflows, or unsanitized system calls.
 Give a clear PASS / FAIL verdict with recommendations."""
 
 
-def _build_tutor_prompt(lang: str, code: str, error: str, query: str, history: List[ChatMessage]) -> str:
+def _build_tutor_prompt(lang: str, code: str, error: str, query: str, history: List[ChatMessage], ast_block: str) -> str:
     history_context = ""
     if len(history) > 1:
         history_context = "\nRecent Conversation:\n" + "\n".join(f"{m.role}: {m.content}" for m in history[-3:])
 
-    return f"""You are the friendly, encouraging Pedagogical Tutor Mentor in a programming education platform.
+    return f"""You are the friendly Pedagogical Tutor Mentor in a programming education platform.
 Language: {lang.upper()}
 
 --- CURRENT CODE ---
@@ -289,13 +325,15 @@ Language: {lang.upper()}
 
 --- OUTPUT / ERROR (if any) ---
 {error}
+
+{ast_block}
 {history_context}
 
 User's Latest Question: {query}
 
 TASK:
 Explain concepts clearly and encouragingly:
-1. 💡 Conceptual Explanation: Explain the concept or why the compiler complained in intuitive terms.
+1. 💡 Conceptual Explanation: Explain why the compiler/runtime complained using the AST hierarchy.
 2. 🔑 Core Invariant / Best Practice: What rule should the student remember?
 3. ⚡ Complexity & Performance: Mention runtime or space complexity if applicable.
 Keep it student-friendly and concise."""

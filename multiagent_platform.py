@@ -120,15 +120,60 @@ def get_installed_ollama_models() -> List[str]:
     return []
 
 def resolve_model_alias(model_tag: str) -> str:
-    """Resolves partial names like 'phi3', 'qwen', or 'llama3' to registered tags."""
+    """
+    Intelligently resolves partial names ('phi3', 'qwen', 'llama3') or missing tags
+    to the best matching *installed* local Ollama model.
+    Prevents HTTP 404 Model Not Found errors.
+    """
+    if not model_tag:
+        return DEFAULT_FAMILY_MODELS["Phi-3"]
+
     tag_clean = model_tag.lower().strip()
+    installed = get_installed_ollama_models()
+
+    # 1. Exact match against installed models
+    for inst in installed:
+        inst_clean = inst.lower()
+        if inst_clean == tag_clean or inst_clean == f"{tag_clean}:latest" or tag_clean == f"{inst_clean}:latest":
+            return inst
+
+    # 2. Family & keyword-based matching against installed models
+    if "qwen" in tag_clean or "repair" in tag_clean:
+        # Prioritize installed Qwen coder models
+        q_coders = [m for m in installed if "qwen" in m.lower() and "coder" in m.lower()]
+        if q_coders:
+            return q_coders[0]
+        qwens = [m for m in installed if "qwen" in m.lower()]
+        if qwens:
+            return qwens[0]
+
+    if "phi" in tag_clean or "detective" in tag_clean or "tutor" in tag_clean:
+        phi_minis = [m for m in installed if "phi" in m.lower() and "mini" in m.lower()]
+        if phi_minis:
+            return phi_minis[0]
+        phis = [m for m in installed if "phi" in m.lower()]
+        if phis:
+            return phis[0]
+
+    if "llama" in tag_clean or "security" in tag_clean or "sentinel" in tag_clean:
+        llama_fast = [m for m in installed if "llama" in m.lower() and ("1b" in m.lower() or "3.2" in m.lower())]
+        if llama_fast:
+            return llama_fast[0]
+        llamas = [m for m in installed if "llama" in m.lower()]
+        if llamas:
+            return llamas[0]
+
+    # 3. Check against static registry if offline or not in installed
     if tag_clean in MODEL_REGISTRY:
         return tag_clean
     for key, data in MODEL_REGISTRY.items():
-        if tag_clean == data["name"].lower() or tag_clean == data["family"].lower():
+        if tag_clean == data["name"].lower() or tag_clean == data["family"].lower() or tag_clean in key:
             return key
-        if tag_clean in key:
-            return key
+
+    # 4. If any model is installed in Ollama, fallback to the first installed model
+    if installed:
+        return installed[0]
+
     return tag_clean
 
 def query_ollama(prompt: str, model_tag: str, temperature: float = 0.2, num_predict: int = 500, stream: bool = False, timeout: int = 60) -> Any:
@@ -275,8 +320,8 @@ class RepairAgent(BaseAgent):
     🛠️ Code Architect:
     Synthesizes minimal, idiomatic, and bug-free code patches.
     """
-    def __init__(self, default_model: str = "qwen2.5:coder"):
-        super().__init__("Repair Agent", "Code Architect 🛠️", default_model)
+    def __init__(self, default_model: Optional[str] = None):
+        super().__init__("Repair Agent", "Code Architect 🛠️", resolve_model_alias(default_model or "qwen"))
 
     def synthesize_repair(
         self,
@@ -463,15 +508,15 @@ class MultiAgentOrchestrator:
     """
     def __init__(
         self,
-        diagnostic_model: str = "phi3:mini",
-        repair_model: str = "qwen2.5:coder",
-        security_model: str = "llama3.2:1b",
-        tutor_model: str = "phi3:mini"
+        diagnostic_model: Optional[str] = None,
+        repair_model: Optional[str] = None,
+        security_model: Optional[str] = None,
+        tutor_model: Optional[str] = None
     ):
-        self.diagnostic_agent = DiagnosticAgent(default_model=diagnostic_model)
-        self.repair_agent = RepairAgent(default_model=repair_model)
-        self.security_agent = SecurityAuditorAgent(default_model=security_model)
-        self.tutor_agent = TutorAgent(default_model=tutor_model)
+        self.diagnostic_agent = DiagnosticAgent(default_model=resolve_model_alias(diagnostic_model or "phi"))
+        self.repair_agent = RepairAgent(default_model=resolve_model_alias(repair_model or "qwen"))
+        self.security_agent = SecurityAuditorAgent(default_model=resolve_model_alias(security_model or "llama"))
+        self.tutor_agent = TutorAgent(default_model=resolve_model_alias(tutor_model or "phi"))
 
     def run_collaborative_swarm(
         self,
@@ -569,9 +614,9 @@ class MultiAgentOrchestrator:
         auditing each proposal to compare results side-by-side.
         """
         targets = council_models or {
-            "Meta Llama 3": "llama3.2:1b",
-            "Microsoft Phi-3": "phi3:mini",
-            "Alibaba Qwen": "qwen2.5:coder"
+            "Meta Llama 3": resolve_model_alias("llama"),
+            "Microsoft Phi-3": resolve_model_alias("phi"),
+            "Alibaba Qwen": resolve_model_alias("qwen")
         }
 
         plan = MultiAgentPlan(

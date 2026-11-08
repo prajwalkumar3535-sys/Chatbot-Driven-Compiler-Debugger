@@ -44,6 +44,26 @@ int main() {
     print("C++ Execution Result:", res_cpp.status, "Stdout:", res_cpp.stdout, "Time:", res_cpp.time_ms, "ms", flush=True)
     assert res_cpp.status == "accepted" and "50" in res_cpp.stdout
 
+    print("\n[7] Testing AST Generator Integration...", flush=True)
+    from app.ast_generator import generate_ast_analysis
+    py_ast = generate_ast_analysis("def test_fn():\n    return 42", "python")
+    assert py_ast["syntax_valid"] is True
+    assert "test_fn" in py_ast["symbols"]["functions"]
+    print("Python AST valid:", py_ast["symbols"]["functions"], flush=True)
+
+    err_ast = generate_ast_analysis("def broken(a, b)\n    pass", "python")
+    assert err_ast["syntax_valid"] is False
+    assert err_ast["syntax_error"]["line"] == 1
+    print("Python AST caught syntax error on line 1:", err_ast["syntax_error"]["message"], flush=True)
+
+    print("\n[8] Testing Model Resolver...", flush=True)
+    from app.ollama_client import resolve_best_model
+    qwen_res = resolve_best_model("qwen")
+    phi_res = resolve_best_model("phi3")
+    llama_res = resolve_best_model("llama3")
+    print(f"Resolved models -> Qwen: {qwen_res}, Phi: {phi_res}, Llama: {llama_res}", flush=True)
+    assert qwen_res is not None and phi_res is not None and llama_res is not None
+
     print("\nALL BACKEND API UNIT TESTS PASSED!", flush=True)
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@ import sys
 import os
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Dict, Any
 
 # Ensure project root is in sys.path
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
@@ -18,6 +18,7 @@ from secure_scan import run_security_guardrail, validate_input
 from error_classifier import classify_error
 from security_logger import log_security_event
 from app.metrics import GreenTracker
+from app.ast_generator import generate_ast_analysis
 
 router = APIRouter(prefix="/api", tags=["execution"])
 
@@ -42,6 +43,12 @@ class RunResponse(BaseModel):
     delta_energy_wh: Optional[float] = None
     error_category: Optional[str] = None
     error_strategy: Optional[str] = None
+    ast: Optional[Dict[str, Any]] = None
+
+@router.post("/ast")
+def get_ast(req: RunRequest):
+    """Generates structural Abstract Syntax Tree (AST) analysis for given code & language."""
+    return generate_ast_analysis(req.code, language=req.language)
 
 @router.post("/run", response_model=RunResponse)
 def run_code(req: RunRequest):
@@ -122,6 +129,9 @@ def run_code(req: RunRequest):
         warning_header = "⚠️ [Advisory Warnings]:\n" + "\n".join(f"- {w}" for w in soft_warnings) + "\n\n"
         stderr = warning_header + (stderr or "")
 
+    # Generate AST Analysis
+    ast_info = generate_ast_analysis(code, language=lang)
+
     return RunResponse(
         stdout=stdout or "",
         stderr=stderr or "",
@@ -137,5 +147,6 @@ def run_code(req: RunRequest):
         delta_time_ms=metrics.get("delta_time_ms"),
         delta_energy_wh=metrics.get("delta_energy_wh"),
         error_category=category,
-        error_strategy=strategy
+        error_strategy=strategy,
+        ast=ast_info
     )

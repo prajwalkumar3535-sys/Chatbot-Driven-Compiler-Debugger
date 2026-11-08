@@ -65,12 +65,15 @@ def get_languages():
 @router.get("/models")
 def get_models():
     """Returns registered LLMs (Llama 3, Phi-3, Qwen 2.5) merged with local Ollama tags."""
+    from app.ollama_client import resolve_best_model
     installed_models = get_ollama_models()
     installed_names = [m.get("name") for m in installed_models if m.get("name")]
 
     result = []
+    registered_tags = set()
     for tag, info in MODEL_REGISTRY.items():
         is_installed = any(tag in inst or inst in tag for inst in installed_names)
+        registered_tags.add(tag)
         result.append({
             "id": tag,
             "name": info["name"],
@@ -81,10 +84,30 @@ def get_models():
             "is_installed": is_installed
         })
 
+    # Add any locally installed models not yet explicitly listed
+    for inst in installed_names:
+        clean_inst = inst.split(":")[0]
+        if not any(inst == r["id"] or clean_inst == r["id"].split(":")[0] for r in result):
+            result.append({
+                "id": inst,
+                "name": inst,
+                "family": "Local",
+                "description": "Locally installed model detected via Ollama",
+                "role_affinity": "General",
+                "pull_cmd": f"ollama pull {inst}",
+                "is_installed": True
+            })
+
+    active_family_models = {
+        "Llama": resolve_best_model("llama"),
+        "Phi-3": resolve_best_model("phi"),
+        "Qwen": resolve_best_model("qwen")
+    }
+
     return {
         "models": result,
         "installed_tags": installed_names,
-        "default_family_models": DEFAULT_FAMILY_MODELS
+        "default_family_models": active_family_models
     }
 
 @router.get("/agents")

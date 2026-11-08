@@ -8,9 +8,11 @@ import {
   Sparkles,
   Terminal,
   FileText,
-  Copy
+  Copy,
+  GitFork,
+  Cpu
 } from 'lucide-react';
-import type { RunResult } from '../lib/types';
+import type { RunResult, ASTAnalysis } from '../lib/types';
 import { toast } from 'sonner';
 
 interface OutputPanelProps {
@@ -28,12 +30,19 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
   isRunning,
   onAskAIFix,
 }) => {
-  const [activeTab, setActiveTab] = useState<'output' | 'input'>('output');
+  const [activeTab, setActiveTab] = useState<'output' | 'input' | 'ast'>('output');
 
   const copyOutput = () => {
     const text = (result?.stdout || '') + '\n' + (result?.stderr || '');
     navigator.clipboard.writeText(text.trim());
     toast.success('Terminal output copied!');
+  };
+
+  const copyAST = () => {
+    if (result?.ast?.tree_text) {
+      navigator.clipboard.writeText(result.ast.tree_text);
+      toast.success('AST Syntax Tree copied!');
+    }
   };
 
   const getStatusBadge = (res: RunResult) => {
@@ -83,6 +92,7 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
   };
 
   const hasError = result && result.status !== 'accepted';
+  const ast: ASTAnalysis | undefined = result?.ast;
 
   return (
     <div className="h-full flex flex-col bg-dark-bg border-b border-dark-border select-none">
@@ -112,6 +122,20 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
             <span>Input (stdin)</span>
             {stdin.trim() && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />}
           </button>
+          <button
+            onClick={() => setActiveTab('ast')}
+            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-t font-medium transition-colors ${
+              activeTab === 'ast'
+                ? 'bg-dark-bg border-t-2 border-indigo-500 text-slate-100'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <GitFork className="w-3.5 h-3.5" />
+            <span>Syntax Tree (AST)</span>
+            {ast && (
+              <span className={`w-1.5 h-1.5 rounded-full ${ast.syntax_valid ? 'bg-cyan-400' : 'bg-rose-400'}`} />
+            )}
+          </button>
         </div>
 
         {/* Status Chip & Quick Actions */}
@@ -123,10 +147,19 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
             </span>
           )}
           {!isRunning && result && getStatusBadge(result)}
-          {result && (
+          {result && activeTab === 'output' && (
             <button
               onClick={copyOutput}
               title="Copy Output"
+              className="p-1 text-slate-400 hover:text-slate-100 hover:bg-dark-hover rounded transition-colors"
+            >
+              <Copy className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {ast && activeTab === 'ast' && (
+            <button
+              onClick={copyAST}
+              title="Copy AST"
               className="p-1 text-slate-400 hover:text-slate-100 hover:bg-dark-hover rounded transition-colors"
             >
               <Copy className="w-3.5 h-3.5" />
@@ -137,14 +170,16 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
 
       {/* Main Panel Body */}
       <div className="flex-1 relative overflow-auto p-3 font-mono text-xs">
-        {activeTab === 'input' ? (
+        {activeTab === 'input' && (
           <textarea
             value={stdin}
             onChange={(e) => onStdinChange(e.target.value)}
             placeholder="Type standard input lines here (e.g. test cases, numbers)..."
             className="w-full h-full bg-transparent text-slate-200 placeholder-slate-600 outline-none resize-none font-mono text-xs leading-relaxed"
           />
-        ) : (
+        )}
+
+        {activeTab === 'output' && (
           <div className="h-full flex flex-col justify-between">
             {/* Terminal Streams */}
             <div className="space-y-2 select-text overflow-auto">
@@ -198,6 +233,80 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
                   <Sparkles className="w-3.5 h-3.5" />
                   <span>Ask AI to Fix This</span>
                 </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'ast' && (
+          <div className="h-full flex flex-col space-y-3 select-text overflow-auto">
+            {!ast ? (
+              <div className="text-slate-500 italic py-6 text-center space-y-2">
+                <GitFork className="w-8 h-8 text-slate-600 mx-auto" />
+                <p>Run your program to inspect the Abstract Syntax Tree (AST).</p>
+                <p className="text-[11px] text-slate-600">The AST is automatically passed to the Detective, Repair, and Council LLMs for faster syntax and logic detection.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {/* AST Metrics Header */}
+                <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded bg-dark-card border border-dark-border">
+                  <div className="flex items-center space-x-2">
+                    <span className={`px-2 py-0.5 rounded text-[11px] font-semibold border ${
+                      ast.syntax_valid
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                        : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                    }`}>
+                      {ast.syntax_valid ? 'AST Valid' : 'Syntax Error'}
+                    </span>
+                    <span className="text-slate-400 text-[11px] font-sans">
+                      {ast.language.toUpperCase()} • {ast.node_count} nodes parsed
+                    </span>
+                  </div>
+
+                  <div className="flex items-center space-x-2 text-[11px] font-mono text-slate-400">
+                    <span className="px-1.5 py-0.5 bg-dark-bg rounded border border-dark-border/50">
+                      fn: {ast.symbols?.functions?.length || 0}
+                    </span>
+                    <span className="px-1.5 py-0.5 bg-dark-bg rounded border border-dark-border/50">
+                      class: {ast.symbols?.classes?.length || 0}
+                    </span>
+                    <span className="px-1.5 py-0.5 bg-dark-bg rounded border border-dark-border/50">
+                      branches: {ast.control_flow?.branches || 0}
+                    </span>
+                    <span className="px-1.5 py-0.5 bg-dark-bg rounded border border-dark-border/50">
+                      loops: {ast.control_flow?.loops || 0}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Pinpoint Syntax Error Box if Invalid */}
+                {!ast.syntax_valid && ast.syntax_error && (
+                  <div className="p-2.5 rounded bg-rose-950/30 border border-rose-500/30 text-rose-300">
+                    <div className="flex items-center space-x-1.5 font-semibold text-rose-400 mb-1 text-[11px]">
+                      <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                      <span>Line {ast.syntax_error.line}, Col {ast.syntax_error.column}: {ast.syntax_error.message}</span>
+                    </div>
+                    {ast.syntax_error.snippet && (
+                      <pre className="mt-1 text-[11px] text-rose-200 bg-black/40 p-2 rounded border border-rose-500/20 overflow-x-auto whitespace-pre">
+                        {ast.syntax_error.snippet}
+                      </pre>
+                    )}
+                  </div>
+                )}
+
+                {/* Rendered Syntax Tree */}
+                <div>
+                  <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1 flex items-center justify-between">
+                    <span>Parsed Hierarchy Tree</span>
+                    <span className="text-[10px] text-cyan-400/80 lowercase flex items-center space-x-1 font-sans">
+                      <Cpu className="w-3 h-3 inline" />
+                      <span>Supplied to Multi-Agent LLMs</span>
+                    </span>
+                  </div>
+                  <pre className="font-mono text-slate-200 text-xs whitespace-pre bg-dark-card/90 p-3 rounded border border-dark-border leading-relaxed overflow-x-auto max-h-72">
+                    {ast.tree_text}
+                  </pre>
+                </div>
               </div>
             )}
           </div>

@@ -34,6 +34,33 @@ export interface Agent {
   prompt_template: string;
 }
 
+export interface ASTAnalysis {
+  language: string;
+  syntax_valid: boolean;
+  syntax_error?: {
+    line: number;
+    column: number;
+    message: string;
+    snippet: string;
+  } | null;
+  tree_text: string;
+  node_count: number;
+  symbols: {
+    functions: string[];
+    classes: string[];
+    imports: string[];
+    calls?: string[];
+    unsafe_ops?: string[];
+  };
+  control_flow: {
+    branches: number;
+    loops: number;
+    try_blocks: number;
+  };
+  summary: string;
+  ast_prompt_block?: string;
+}
+
 export interface RunResult {
   stdout: string;
   stderr: string;
@@ -50,6 +77,7 @@ export interface RunResult {
   delta_energy_wh?: number;
   error_category?: string;
   error_strategy?: string;
+  ast?: ASTAnalysis;
 }
 
 export interface RunHistoryItem {
@@ -92,3 +120,4 @@ export interface HealthStatus {
   docker_online: boolean;
   sandboxes: Record<string, string>;
 }
+

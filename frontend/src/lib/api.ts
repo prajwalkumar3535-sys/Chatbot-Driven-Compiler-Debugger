@@ -1,4 +1,4 @@
-import type { Language, Model, Agent, RunResult, HealthStatus } from './types';
+import type { Language, Model, Agent, RunResult, HealthStatus, ASTAnalysis } from './types';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
 
@@ -39,6 +39,19 @@ export async function executeCode(language: string, code: string, stdin: string)
   return res.json();
 }
 
+export async function fetchAST(language: string, code: string): Promise<ASTAnalysis> {
+  const res = await fetch(`${API_BASE}/api/ast`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ language, code, stdin: '' }),
+  });
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`AST error (${res.status}): ${errorText}`);
+  }
+  return res.json();
+}
+
 export interface StreamChatParams {
   agent: string;
   mode: string;
@@ -49,6 +62,7 @@ export interface StreamChatParams {
   messages: { role: string; content: string }[];
   signal?: AbortSignal;
   onToken: (token: string, agent?: string) => void;
+  onASTReady?: (data: { syntax_valid: boolean; summary: string; node_count: number; control_flow: any }) => void;
   onAgentStart?: (agent: string, model: string) => void;
   onAgentDone?: (data: { has_code: boolean; extracted_code?: string; is_safe: boolean; security_note?: string }) => void;
   onModelHeader?: (modelName: string, modelTag: string) => void;
@@ -130,6 +144,8 @@ export async function streamChat(params: StreamChatParams) {
               } else {
                 onToken(data.token, data.agent);
               }
+            } else if (currentEvent === 'ast_ready' && params.onASTReady) {
+              params.onASTReady(data);
             } else if (currentEvent === 'agent_start' && onAgentStart) {
               onAgentStart(data.agent, data.model);
             } else if (currentEvent === 'agent_done' && onAgentDone) {
