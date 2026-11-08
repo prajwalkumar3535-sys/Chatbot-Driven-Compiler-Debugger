@@ -13,6 +13,14 @@ export interface Language {
   template: string;
 }
 
+export interface EditorFile {
+  id: string;
+  name: string;
+  language: string; // 'cpp' | 'python' | 'java'
+  content: string;
+  isModified?: boolean;
+}
+
 export interface Model {
   id: string;
   name: string;

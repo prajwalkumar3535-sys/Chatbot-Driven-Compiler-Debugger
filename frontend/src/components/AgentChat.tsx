@@ -262,10 +262,10 @@ export const AgentChat: React.FC<AgentChatProps> = ({
                                 onApplyCode(cRes.code!);
                                 toast.success(`Applied ${cRes.model_name} fix to editor!`);
                               }}
-                              className="w-full flex items-center justify-center space-x-1 py-1 rounded bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 text-[10px] font-medium transition-colors"
+                              className="w-full flex items-center justify-center space-x-1.5 py-1.5 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm text-[11px] font-semibold transition-all active:scale-95"
                             >
-                              <ArrowRight className="w-3 h-3" />
-                              <span>Apply {cRes.model_name}</span>
+                              <ArrowRight className="w-3.5 h-3.5" />
+                              <span>Apply {cRes.model_name} Fix</span>
                             </button>
                           )}
                         </div>
@@ -295,9 +295,9 @@ export const AgentChat: React.FC<AgentChatProps> = ({
 
                           if (!inline && match) {
                             return (
-                              <div className="my-2 rounded-lg overflow-hidden border border-slate-700 bg-slate-950">
-                                <div className="h-7 px-3 bg-slate-900 border-b border-slate-800 flex items-center justify-between text-[11px] text-slate-400 font-mono">
-                                  <span>{match[1].toUpperCase()}</span>
+                              <div className="my-2.5 rounded-lg overflow-hidden border border-slate-700 bg-slate-950 shadow-md">
+                                <div className="h-8 px-3 bg-slate-900 border-b border-slate-800 flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                                  <span className="font-semibold text-slate-300">{match[1].toUpperCase()}</span>
                                   <div className="flex items-center space-x-2">
                                     <button
                                       onClick={() => {
@@ -305,7 +305,7 @@ export const AgentChat: React.FC<AgentChatProps> = ({
                                         toast.success('Code block copied!');
                                       }}
                                       title="Copy code"
-                                      className="flex items-center space-x-1 hover:text-slate-100 transition-colors"
+                                      className="flex items-center space-x-1 px-2 py-1 rounded hover:bg-slate-800 text-slate-300 hover:text-white transition-colors text-[11px]"
                                     >
                                       <Copy className="w-3 h-3" />
                                       <span>Copy</span>
@@ -315,15 +315,15 @@ export const AgentChat: React.FC<AgentChatProps> = ({
                                         onApplyCode(codeString);
                                         toast.success('Code applied to editor!');
                                       }}
-                                      title="Apply directly to editor"
-                                      className="flex items-center space-x-1 text-emerald-400 hover:text-emerald-300 font-semibold transition-colors"
+                                      title="Apply directly to active editor tab"
+                                      className="flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-[11px] shadow-sm hover:shadow-emerald-500/25 border border-emerald-400/30 transition-all active:scale-95"
                                     >
-                                      <ArrowRight className="w-3 h-3" />
+                                      <ArrowRight className="w-3 h-3 text-white" />
                                       <span>Apply to Editor</span>
                                     </button>
                                   </div>
                                 </div>
-                                <pre className="p-3 text-[11px] font-mono overflow-x-auto text-emerald-300">
+                                <pre className="p-3 text-[11px] font-mono overflow-x-auto text-emerald-300 leading-relaxed">
                                   <code>{children}</code>
                                 </pre>
                               </div>

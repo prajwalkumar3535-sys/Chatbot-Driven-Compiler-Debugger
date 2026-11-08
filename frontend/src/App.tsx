@@ -4,7 +4,6 @@ import { Toaster, toast } from 'sonner';
 import { Navbar } from './components/Navbar';
 import { CodeEditor } from './components/CodeEditor';
 import { OutputPanel } from './components/OutputPanel';
-import { GreenMetrics } from './components/GreenMetrics';
 import { AgentChat } from './components/AgentChat';
 import { SettingsModal } from './components/SettingsModal';
 import { RunHistoryDrawer } from './components/RunHistoryDrawer';
@@ -18,7 +17,8 @@ import type {
   RunHistoryItem,
   ChatMessage,
   HealthStatus,
-  CouncilModelResult
+  CouncilModelResult,
+  EditorFile
 } from './lib/types';
 import {
   fetchHealth,
@@ -76,31 +76,40 @@ print("Hello from Python Sandbox!")
 
 const DEFAULT_MODELS: Model[] = [
   {
-    id: 'qwen2.5:coder',
-    name: 'Qwen 2.5 Coder 7B',
+    id: 'qwen2.5-coder:1.5b',
+    name: 'Qwen 2.5 Coder 1.5B',
     family: 'Qwen',
-    description: '💻 Alibaba SOTA code synthesis & repair',
+    description: '⚡ Ultra-fast specialized coding model (Installed)',
     role_affinity: 'RepairAgent',
-    pull_cmd: 'ollama pull qwen2.5:coder',
-    is_installed: false,
+    pull_cmd: 'ollama pull qwen2.5-coder:1.5b',
+    is_installed: true,
   },
   {
     id: 'phi3:mini',
-    name: 'Phi-3 Mini 3.8B',
+    name: 'Microsoft Phi-3 Mini 3.8B',
     family: 'Phi-3',
-    description: '🔬 Microsoft 3.8B high-density logical reasoning',
+    description: '🧠 High-accuracy reasoning & fault localization',
     role_affinity: 'DiagnosticAgent',
     pull_cmd: 'ollama pull phi3:mini',
-    is_installed: false,
+    is_installed: true,
   },
   {
     id: 'llama3.2:1b',
-    name: 'Llama 3.2 1B',
+    name: 'Meta Llama 3.2 1B',
     family: 'Llama',
-    description: '⚡ Ultra-fast 1B triage & security checks',
+    description: '🛡️ Fast security checks & triage',
     role_affinity: 'SecurityAuditorAgent',
     pull_cmd: 'ollama pull llama3.2:1b',
-    is_installed: false,
+    is_installed: true,
+  },
+  {
+    id: 'llama3:latest',
+    name: 'Meta Llama 3 8B',
+    family: 'Llama',
+    description: '🌐 Comprehensive general programming tutor',
+    role_affinity: 'TutorAgent',
+    pull_cmd: 'ollama pull llama3',
+    is_installed: true,
   },
 ];
 
@@ -131,7 +140,7 @@ const DEFAULT_AGENTS: Agent[] = [
     icon: 'Wrench',
     role: 'Code Architect 🛠️',
     accent_color: '#8b5cf6',
-    default_model: 'qwen2.5:coder',
+    default_model: 'qwen2.5-coder:1.5b',
     description: 'Synthesizes minimal, clean, and bug-free code patches.',
     prompt_template: 'Precision code synthesis preserving original naming and intent.',
   },
@@ -148,7 +157,7 @@ const DEFAULT_AGENTS: Agent[] = [
 ];
 
 export function App() {
-  // Theme state
+  // Theme state: dark / light
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     return (localStorage.getItem('sandbox_theme') as 'dark' | 'light') || 'dark';
   });
@@ -159,20 +168,48 @@ export function App() {
     return localStorage.getItem('sandbox_lang') || 'cpp';
   });
 
-  // Code state per language
-  const [codePerLang, setCodePerLang] = useState<Record<string, string>>(() => {
-    const saved = localStorage.getItem('sandbox_code_store');
+  // Multi-Tab Editor Files
+  const [files, setFiles] = useState<EditorFile[]>(() => {
+    const saved = localStorage.getItem('sandbox_files_v3');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       } catch {}
     }
-    return {
-      cpp: DEFAULT_LANGUAGES[0].template,
-      python: DEFAULT_LANGUAGES[1].template,
-      java: DEFAULT_LANGUAGES[2].template,
-    };
+    return [
+      {
+        id: 'tab-1',
+        name: 'solution.cpp',
+        language: 'cpp',
+        content: DEFAULT_LANGUAGES[0].template,
+      },
+      {
+        id: 'tab-2',
+        name: 'script.py',
+        language: 'python',
+        content: DEFAULT_LANGUAGES[1].template,
+      },
+      {
+        id: 'tab-3',
+        name: 'Main.java',
+        language: 'java',
+        content: DEFAULT_LANGUAGES[2].template,
+      },
+    ];
   });
+
+  const [activeFileId, setActiveFileId] = useState<string>(() => {
+    return localStorage.getItem('sandbox_active_tab_id') || 'tab-1';
+  });
+
+  // Active File object
+  const activeFile = files.find((f) => f.id === activeFileId) || files[0] || {
+    id: 'tab-1',
+    name: 'solution.cpp',
+    language: 'cpp',
+    content: DEFAULT_LANGUAGES[0].template,
+  };
 
   // Editor font size
   const [fontSize, setFontSize] = useState<number>(() => {
@@ -193,7 +230,7 @@ export function App() {
   });
   const [models, setModels] = useState<Model[]>(DEFAULT_MODELS);
   const [selectedModel, setSelectedModel] = useState<string>(() => {
-    return localStorage.getItem('sandbox_model') || 'qwen2.5:coder';
+    return localStorage.getItem('sandbox_model') || 'qwen2.5-coder:1.5b';
   });
 
   // Multi-Agent states
@@ -203,7 +240,7 @@ export function App() {
   });
   const [agentModelRouting, setAgentModelRouting] = useState<Record<string, string>>({
     detective: 'phi3:mini',
-    repair: 'qwen2.5:coder',
+    repair: 'qwen2.5-coder:1.5b',
     security: 'llama3.2:1b',
     tutor: 'phi3:mini',
   });
@@ -238,25 +275,33 @@ export function App() {
   // Mobile layout tab
   const [mobileTab, setMobileTab] = useState<'editor' | 'output' | 'chat'>('editor');
 
-  // Persistence side effects
+  // Apply Theme to Document Element
   useEffect(() => {
     localStorage.setItem('sandbox_theme', theme);
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-      document.documentElement.classList.remove('light');
+    const root = document.documentElement;
+    if (theme === 'light') {
+      root.classList.add('light');
+      root.classList.remove('dark');
+      root.setAttribute('data-theme', 'light');
     } else {
-      document.documentElement.classList.add('light');
-      document.documentElement.classList.remove('dark');
+      root.classList.add('dark');
+      root.classList.remove('light');
+      root.setAttribute('data-theme', 'dark');
     }
   }, [theme]);
+
+  // Persist files & active tab
+  useEffect(() => {
+    localStorage.setItem('sandbox_files_v3', JSON.stringify(files));
+  }, [files]);
+
+  useEffect(() => {
+    localStorage.setItem('sandbox_active_tab_id', activeFileId);
+  }, [activeFileId]);
 
   useEffect(() => {
     localStorage.setItem('sandbox_lang', selectedLanguage);
   }, [selectedLanguage]);
-
-  useEffect(() => {
-    localStorage.setItem('sandbox_code_store', JSON.stringify(codePerLang));
-  }, [codePerLang]);
 
   useEffect(() => {
     localStorage.setItem('sandbox_platform_mode', platformMode);
@@ -313,8 +358,81 @@ export function App() {
     return () => clearInterval(interval);
   }, []);
 
-  const currentLangObj = languages.find((l) => l.id === selectedLanguage) || DEFAULT_LANGUAGES[0];
-  const currentCode = codePerLang[selectedLanguage] || currentLangObj.template;
+  // Multi-Tab Handlers
+  const handleSelectFile = (fileId: string) => {
+    setActiveFileId(fileId);
+    const target = files.find((f) => f.id === fileId);
+    if (target) {
+      setSelectedLanguage(target.language);
+    }
+  };
+
+  const handleAddFile = (name?: string, lang?: string, content?: string) => {
+    const effectiveLang = lang || selectedLanguage || 'cpp';
+    const ext = effectiveLang === 'python' ? '.py' : effectiveLang === 'java' ? '.java' : '.cpp';
+    const defaultName = name || `tab${files.length + 1}${ext}`;
+    const defaultContent = content ?? (languages.find((l) => l.id === effectiveLang)?.template || '');
+
+    const newFile: EditorFile = {
+      id: `tab-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      name: defaultName,
+      language: effectiveLang,
+      content: defaultContent,
+    };
+
+    setFiles((prev) => [...prev, newFile]);
+    setActiveFileId(newFile.id);
+    setSelectedLanguage(effectiveLang);
+    toast.success(`Created tab: ${newFile.name}`);
+  };
+
+  const handleCloseFile = (fileId: string) => {
+    if (files.length <= 1) return;
+    const remaining = files.filter((f) => f.id !== fileId);
+    setFiles(remaining);
+
+    if (activeFileId === fileId) {
+      const nextFile = remaining[0];
+      setActiveFileId(nextFile.id);
+      setSelectedLanguage(nextFile.language);
+    }
+    toast.info('Tab closed');
+  };
+
+  const handleRenameFile = (fileId: string, newName: string) => {
+    const ext = newName.split('.').pop()?.toLowerCase();
+    let lang = activeFile.language;
+    if (ext === 'cpp' || ext === 'cc' || ext === 'h' || ext === 'hpp') lang = 'cpp';
+    else if (ext === 'py') lang = 'python';
+    else if (ext === 'java') lang = 'java';
+
+    setFiles((prev) =>
+      prev.map((f) => (f.id === fileId ? { ...f, name: newName, language: lang } : f))
+    );
+    if (activeFileId === fileId) {
+      setSelectedLanguage(lang);
+    }
+  };
+
+  const handleCodeChange = (newCode: string) => {
+    setFiles((prev) =>
+      prev.map((f) => (f.id === activeFileId ? { ...f, content: newCode } : f))
+    );
+  };
+
+  // Switch Language from Navbar
+  const handleSelectLanguage = (langId: string) => {
+    setSelectedLanguage(langId);
+    const existing = files.find((f) => f.language === langId);
+    if (existing) {
+      setActiveFileId(existing.id);
+    } else {
+      const langObj = languages.find((l) => l.id === langId) || DEFAULT_LANGUAGES[0];
+      handleAddFile(langObj.filename, langId, langObj.template);
+    }
+  };
+
+  const currentLangObj = languages.find((l) => l.id === activeFile.language) || DEFAULT_LANGUAGES[0];
 
   // Handle Run
   const handleRun = async () => {
@@ -323,14 +441,14 @@ export function App() {
     setMobileTab('output');
 
     try {
-      const res = await executeCode(selectedLanguage, currentCode, stdin);
+      const res = await executeCode(activeFile.language, activeFile.content, stdin);
       setResult(res);
 
       const historyEntry: RunHistoryItem = {
         id: Math.random().toString(36).substring(7),
         timestamp: new Date().toLocaleTimeString(),
-        language: selectedLanguage,
-        code: currentCode,
+        language: activeFile.language,
+        code: activeFile.content,
         status: res.status,
         time_ms: res.time_ms,
         eco_score: res.eco_score,
@@ -419,8 +537,8 @@ export function App() {
       agent: selectedAgent,
       mode: platformMode,
       model: activeModelTag,
-      language: selectedLanguage,
-      code: currentCode,
+      language: activeFile.language,
+      code: activeFile.content,
       lastRunOutput: lastOutputContext,
       messages: updatedMessages.map((m) => ({ role: m.role, content: m.content })),
       signal: abortController.signal,
@@ -506,26 +624,18 @@ export function App() {
   };
 
   const handleApplyCode = (newCode: string) => {
-    setCodePerLang((prev) => ({
-      ...prev,
-      [selectedLanguage]: newCode,
-    }));
-    toast.success('Verified fix applied to code editor!');
+    handleCodeChange(newCode);
+    toast.success(`Applied patch to ${activeFile.name}!`);
   };
 
   const handleResetTemplate = () => {
-    setCodePerLang((prev) => ({
-      ...prev,
-      [selectedLanguage]: currentLangObj.template,
-    }));
-    toast.info(`Reset to starter ${currentLangObj.name} template`);
+    const defaultTemplate = languages.find((l) => l.id === activeFile.language)?.template || '';
+    handleCodeChange(defaultTemplate);
+    toast.info(`Reset ${activeFile.name} to template`);
   };
 
   const handleClearCode = () => {
-    setCodePerLang((prev) => ({
-      ...prev,
-      [selectedLanguage]: '',
-    }));
+    handleCodeChange('');
   };
 
   return (
@@ -536,7 +646,7 @@ export function App() {
       <Navbar
         languages={languages}
         selectedLanguage={selectedLanguage}
-        onSelectLanguage={setSelectedLanguage}
+        onSelectLanguage={handleSelectLanguage}
         platformMode={platformMode}
         onSelectPlatformMode={setPlatformMode}
         models={models}
@@ -553,17 +663,17 @@ export function App() {
       {/* Desktop Main Resizable Area */}
       <div className="flex-1 hidden md:block overflow-hidden">
         <Group orientation="horizontal" className="h-full w-full">
-          {/* Left Region: Code Editor (55%) */}
+          {/* Left Region: Multi-Tab Code Editor (55%) */}
           <Panel defaultSize="55%" minSize="30%">
             <CodeEditor
               language={currentLangObj}
-              code={currentCode}
-              onChange={(val) =>
-                setCodePerLang((prev) => ({
-                  ...prev,
-                  [selectedLanguage]: val,
-                }))
-              }
+              files={files}
+              activeFileId={activeFileId}
+              onSelectFile={handleSelectFile}
+              onAddFile={handleAddFile}
+              onCloseFile={handleCloseFile}
+              onRenameFile={handleRenameFile}
+              onCodeChange={handleCodeChange}
               onRun={handleRun}
               onDebugAI={handleDebugAI}
               isRunning={isRunning}
@@ -579,11 +689,11 @@ export function App() {
             <div className="h-8 w-0.5 bg-slate-700 rounded-full" />
           </Separator>
 
-          {/* Right Region: Output, Green Metrics, and AI Chat (45%) */}
+          {/* Right Region: Output Panel & Multi-Agent AI Chat (45%) */}
           <Panel defaultSize="45%" minSize="30%">
             <Group orientation="vertical" className="h-full w-full">
-              {/* Right Top: Stdin & Output Panel */}
-              <Panel defaultSize="40%" minSize="20%">
+              {/* Right Top: Output Panel with Carbon & AST Tabs */}
+              <Panel defaultSize="48%" minSize="25%">
                 <OutputPanel
                   stdin={stdin}
                   onStdinChange={setStdin}
@@ -593,17 +703,12 @@ export function App() {
                 />
               </Panel>
 
-              {/* Green Sandbox Metrics Strip (Always Visible) */}
-              <div className="shrink-0">
-                <GreenMetrics metrics={result} />
-              </div>
-
               <Separator className="h-1.5 bg-dark-bg hover:bg-indigo-500/50 transition-colors cursor-row-resize flex items-center justify-center">
                 <div className="w-8 h-0.5 bg-slate-700 rounded-full" />
               </Separator>
 
               {/* Right Bottom: Multi-Agent AI Chat */}
-              <Panel defaultSize="60%" minSize="25%">
+              <Panel defaultSize="52%" minSize="30%">
                 <AgentChat
                   agents={agents}
                   selectedAgent={selectedAgent}
@@ -629,13 +734,13 @@ export function App() {
           {mobileTab === 'editor' && (
             <CodeEditor
               language={currentLangObj}
-              code={currentCode}
-              onChange={(val) =>
-                setCodePerLang((prev) => ({
-                  ...prev,
-                  [selectedLanguage]: val,
-                }))
-              }
+              files={files}
+              activeFileId={activeFileId}
+              onSelectFile={handleSelectFile}
+              onAddFile={handleAddFile}
+              onCloseFile={handleCloseFile}
+              onRenameFile={handleRenameFile}
+              onCodeChange={handleCodeChange}
               onRun={handleRun}
               onDebugAI={handleDebugAI}
               isRunning={isRunning}
@@ -658,7 +763,6 @@ export function App() {
                   onAskAIFix={handleAskAIFix}
                 />
               </div>
-              <GreenMetrics metrics={result} />
             </div>
           )}
 
@@ -679,25 +783,33 @@ export function App() {
           )}
         </div>
 
-        {/* Bottom Tab Bar for Mobile */}
-        <div className="h-12 border-t border-dark-border bg-dark-card flex items-center justify-around text-xs font-semibold">
+        {/* Mobile Bottom Navigation Bar */}
+        <div className="h-12 bg-dark-card border-t border-dark-border grid grid-cols-3 text-xs shrink-0 select-none">
           <button
             onClick={() => setMobileTab('editor')}
-            className={`flex-1 py-3 text-center ${mobileTab === 'editor' ? 'text-emerald-400 border-t-2 border-emerald-400' : 'text-slate-400'}`}
+            className={`flex items-center justify-center space-x-1.5 font-medium transition-colors ${
+              mobileTab === 'editor' ? 'text-emerald-400 bg-dark-bg border-t-2 border-emerald-500' : 'text-slate-400'
+            }`}
           >
-            Editor
+            <span>Editor</span>
           </button>
           <button
             onClick={() => setMobileTab('output')}
-            className={`flex-1 py-3 text-center ${mobileTab === 'output' ? 'text-indigo-400 border-t-2 border-indigo-400' : 'text-slate-400'}`}
+            className={`flex items-center justify-center space-x-1.5 font-medium transition-colors ${
+              mobileTab === 'output' ? 'text-indigo-400 bg-dark-bg border-t-2 border-indigo-500' : 'text-slate-400'
+            }`}
           >
-            Output & Metrics
+            <span>Output</span>
+            {result && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />}
           </button>
           <button
             onClick={() => setMobileTab('chat')}
-            className={`flex-1 py-3 text-center ${mobileTab === 'chat' ? 'text-purple-400 border-t-2 border-purple-400' : 'text-slate-400'}`}
+            className={`flex items-center justify-center space-x-1.5 font-medium transition-colors ${
+              mobileTab === 'chat' ? 'text-purple-400 bg-dark-bg border-t-2 border-purple-500' : 'text-slate-400'
+            }`}
           >
-            AI Chat
+            <span>AI Council</span>
+            {messages.length > 0 && <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />}
           </button>
         </div>
       </div>
@@ -709,7 +821,7 @@ export function App() {
         models={models}
         agents={agents}
         agentModelRouting={agentModelRouting}
-        onUpdateAgentModelRouting={setAgentModelRouting}
+        onUpdateAgentModelRouting={(newRouting) => setAgentModelRouting(newRouting)}
       />
 
       {/* Run History Drawer */}
@@ -718,15 +830,16 @@ export function App() {
         onClose={() => setIsHistoryOpen(false)}
         history={runHistory}
         onRestore={(item) => {
-          setSelectedLanguage(item.language);
-          setCodePerLang((prev) => ({
-            ...prev,
-            [item.language]: item.code,
-          }));
+          handleCodeChange(item.code);
+          toast.success(`Restored code from ${item.timestamp}`);
         }}
-        onClearHistory={() => setRunHistory([])}
+        onClearHistory={() => {
+          setRunHistory([]);
+          toast.info('Run history cleared');
+        }}
       />
     </div>
   );
 }
+
 export default App;

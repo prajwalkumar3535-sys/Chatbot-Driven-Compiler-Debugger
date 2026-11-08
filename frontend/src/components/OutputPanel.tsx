@@ -10,7 +10,15 @@ import {
   FileText,
   Copy,
   GitFork,
-  Cpu
+  Cpu,
+  Leaf,
+  Timer,
+  HardDrive,
+  Zap,
+  Globe2,
+  TrendingDown,
+  TrendingUp,
+  Minus
 } from 'lucide-react';
 import type { RunResult, ASTAnalysis } from '../lib/types';
 import { toast } from 'sonner';
@@ -30,7 +38,7 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
   isRunning,
   onAskAIFix,
 }) => {
-  const [activeTab, setActiveTab] = useState<'output' | 'input' | 'ast'>('output');
+  const [activeTab, setActiveTab] = useState<'output' | 'input' | 'ast' | 'metrics'>('output');
 
   const copyOutput = () => {
     const text = (result?.stdout || '') + '\n' + (result?.stderr || '');
@@ -43,6 +51,23 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
       navigator.clipboard.writeText(result.ast.tree_text);
       toast.success('AST Syntax Tree copied!');
     }
+  };
+
+  const formatDelta = (val?: number, unit: string = '') => {
+    if (val === undefined || val === null || val === 0) {
+      return (
+        <span className="flex items-center text-[10px] text-slate-500">
+          <Minus className="w-2.5 h-2.5 mr-0.5" /> same
+        </span>
+      );
+    }
+    const isGood = val < 0;
+    return (
+      <span className={`flex items-center text-[10px] ${isGood ? 'text-emerald-400' : 'text-amber-400'}`}>
+        {isGood ? <TrendingDown className="w-2.5 h-2.5 mr-0.5" /> : <TrendingUp className="w-2.5 h-2.5 mr-0.5" />}
+        {val > 0 ? `+${val}` : val} {unit}
+      </span>
+    );
   };
 
   const getStatusBadge = (res: RunResult) => {
@@ -97,8 +122,9 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
   return (
     <div className="h-full flex flex-col bg-dark-bg border-b border-dark-border select-none">
       {/* Top Header with Tabs */}
-      <div className="h-10 px-3 bg-dark-card/60 border-b border-dark-border flex items-center justify-between text-xs">
+      <div className="h-10 px-3 bg-dark-card/60 border-b border-dark-border flex items-center justify-between text-xs overflow-x-auto">
         <div className="flex items-center space-x-1">
+          {/* Tab 1: Terminal Output */}
           <button
             onClick={() => setActiveTab('output')}
             className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-t font-medium transition-colors ${
@@ -110,6 +136,8 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
             <Terminal className="w-3.5 h-3.5" />
             <span>Output</span>
           </button>
+
+          {/* Tab 2: Input (stdin) */}
           <button
             onClick={() => setActiveTab('input')}
             className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-t font-medium transition-colors ${
@@ -122,6 +150,8 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
             <span>Input (stdin)</span>
             {stdin.trim() && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />}
           </button>
+
+          {/* Tab 3: Syntax Tree (AST) */}
           <button
             onClick={() => setActiveTab('ast')}
             className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-t font-medium transition-colors ${
@@ -136,10 +166,28 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
               <span className={`w-1.5 h-1.5 rounded-full ${ast.syntax_valid ? 'bg-cyan-400' : 'bg-rose-400'}`} />
             )}
           </button>
+
+          {/* Tab 4: Carbon & Eco Metrics */}
+          <button
+            onClick={() => setActiveTab('metrics')}
+            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-t font-medium transition-colors ${
+              activeTab === 'metrics'
+                ? 'bg-dark-bg border-t-2 border-emerald-500 text-emerald-400'
+                : 'text-slate-400 hover:text-emerald-400'
+            }`}
+          >
+            <Leaf className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Carbon Metrics</span>
+            {result?.eco_score && (
+              <span className="text-[10px] font-mono px-1 bg-emerald-500/20 text-emerald-300 rounded font-bold">
+                {result.eco_score}
+              </span>
+            )}
+          </button>
         </div>
 
         {/* Status Chip & Quick Actions */}
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 shrink-0">
           {isRunning && (
             <span className="flex items-center space-x-1.5 text-[11px] text-amber-400 font-mono">
               <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
@@ -170,6 +218,7 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
 
       {/* Main Panel Body */}
       <div className="flex-1 relative overflow-auto p-3 font-mono text-xs">
+        {/* INPUT TAB */}
         {activeTab === 'input' && (
           <textarea
             value={stdin}
@@ -179,6 +228,7 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
           />
         )}
 
+        {/* OUTPUT TAB */}
         {activeTab === 'output' && (
           <div className="h-full flex flex-col justify-between">
             {/* Terminal Streams */}
@@ -238,6 +288,7 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
           </div>
         )}
 
+        {/* AST TAB */}
         {activeTab === 'ast' && (
           <div className="h-full flex flex-col space-y-3 select-text overflow-auto">
             {!ast ? (
@@ -309,6 +360,118 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* CARBON & GREEN METRICS TAB */}
+        {activeTab === 'metrics' && (
+          <div className="h-full select-text overflow-auto space-y-3 font-sans">
+            {/* Top Eco Score Banner */}
+            <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-emerald-950/30 via-dark-card to-dark-card border border-emerald-500/30">
+              <div className="flex items-center space-x-3">
+                <div className="p-2.5 rounded-full bg-emerald-500/20 text-emerald-400">
+                  <Leaf className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-xs font-semibold text-slate-200">Green Sandbox Rating</div>
+                  <div className="text-[11px] text-slate-400">Hardware-monitored energy & carbon emissions tracking</div>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <div className="text-right">
+                  <div className="text-[10px] uppercase font-bold text-emerald-400 tracking-wider">Eco Score</div>
+                  <div className="text-xs font-medium text-slate-300">{result?.eco_label || 'Optimal'}</div>
+                </div>
+                <div className="px-3 py-1 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 rounded font-mono font-black text-xl">
+                  {result?.eco_score || 'A+'}
+                </div>
+              </div>
+            </div>
+
+            {/* 4 Cards Grid */}
+            <div className="grid grid-cols-2 gap-2.5">
+              {/* Card 1: Latency */}
+              <div className="p-3 rounded-lg bg-dark-card border border-dark-border flex flex-col justify-between">
+                <div className="flex items-center justify-between text-slate-400 mb-1">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider">Execution Latency</span>
+                  <Timer className="w-4 h-4 text-blue-400" />
+                </div>
+                <div className="flex items-baseline space-x-1 my-1">
+                  <span className="text-xl font-bold font-mono text-slate-100">
+                    {(result?.time_ms ?? 0).toFixed(1)}
+                  </span>
+                  <span className="text-xs font-mono text-slate-400">ms</span>
+                </div>
+                <div className="text-[11px]">
+                  {formatDelta(result?.delta_time_ms, 'ms')}
+                </div>
+              </div>
+
+              {/* Card 2: Memory */}
+              <div className="p-3 rounded-lg bg-dark-card border border-dark-border flex flex-col justify-between">
+                <div className="flex items-center justify-between text-slate-400 mb-1">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider">Peak Memory</span>
+                  <HardDrive className="w-4 h-4 text-purple-400" />
+                </div>
+                <div className="flex items-baseline space-x-1 my-1">
+                  <span className="text-xl font-bold font-mono text-slate-100">
+                    {(result?.memory_kb ?? 0).toLocaleString()}
+                  </span>
+                  <span className="text-xs font-mono text-slate-400">KB</span>
+                </div>
+                <div className="text-[11px] text-slate-500">
+                  Docker Cgroup cap: 256 MB
+                </div>
+              </div>
+
+              {/* Card 3: Energy */}
+              <div className="p-3 rounded-lg bg-dark-card border border-dark-border flex flex-col justify-between">
+                <div className="flex items-center justify-between text-slate-400 mb-1">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider">Energy Consumed</span>
+                  <Zap className="w-4 h-4 text-amber-400" />
+                </div>
+                <div className="flex items-baseline space-x-1 my-1">
+                  <span className="text-xl font-bold font-mono text-slate-100 truncate" title={`${result?.energy_wh ?? 0} Wh`}>
+                    {(result?.energy_wh ?? 0).toFixed(6)}
+                  </span>
+                  <span className="text-xs font-mono text-slate-400">Wh</span>
+                </div>
+                <div className="text-[11px]">
+                  {formatDelta(result?.delta_energy_wh, 'Wh')}
+                </div>
+              </div>
+
+              {/* Card 4: Carbon */}
+              <div className="p-3 rounded-lg bg-dark-card border border-dark-border flex flex-col justify-between">
+                <div className="flex items-center justify-between text-slate-400 mb-1">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider">Carbon Footprint</span>
+                  <Globe2 className="w-4 h-4 text-emerald-400" />
+                </div>
+                <div className="flex items-baseline space-x-1 my-1">
+                  <span className="text-xl font-bold font-mono text-slate-100 truncate" title={`${result?.carbon_g ?? 0} g CO2eq`}>
+                    {(result?.carbon_g ?? 0).toFixed(6)}
+                  </span>
+                  <span className="text-xs font-mono text-slate-400">g CO₂e</span>
+                </div>
+                <div className="text-[11px] text-slate-500">
+                  Grid Average: ~475 g/kWh
+                </div>
+              </div>
+            </div>
+
+            {/* Informational Guidance */}
+            <div className="p-3 rounded-lg bg-dark-card/60 border border-dark-border text-xs text-slate-400 leading-relaxed space-y-1">
+              <div className="font-semibold text-slate-200 flex items-center space-x-1.5">
+                <Leaf className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Why Software Carbon Tracking Matters</span>
+              </div>
+              <p>
+                Every code execution incurs a real-world energy cost. By measuring CPU cycle duration and memory wattage,
+                the Green Sandbox empowers developers to optimize algorithms (e.g. reducing O(N²) loops to O(N log N))
+                to directly lower energy consumption and greenhouse gas emissions.
+              </p>
+            </div>
           </div>
         )}
       </div>
