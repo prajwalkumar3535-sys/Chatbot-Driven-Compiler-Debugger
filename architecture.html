@@ -1,449 +1,433 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Multi-Agent Sandbox Compiler Architecture</title>
-  <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multi-Agent Sandbox Compiler – Architecture</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    body {
-      background-color: #ffffff;
-      color: #1e293b;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 30px 20px;
-      min-height: 100vh;
-    }
+  body {
+    background: #ffffff;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    padding: 40px 20px 60px;
+    min-height: 100vh;
+  }
 
-    .diagram-wrapper {
-      position: relative;
-      width: 100%;
-      max-width: 860px;
-      background: #ffffff;
-      padding: 10px 40px 30px 10px;
-    }
+  /* ─── WRAPPER ─────────────────────────────────────── */
+  .canvas {
+    position: relative;
+    width: 660px;
+  }
 
-    /* Section Containers */
-    .section-card {
-      position: relative;
-      border-radius: 12px;
-      border-width: 2px;
-      border-style: solid;
-      padding: 16px 20px;
-      margin-bottom: 50px;
-      z-index: 2;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-    }
+  /* ─── SECTION CARDS ───────────────────────────────── */
+  .sec {
+    border-radius: 12px;
+    border: 2px solid;
+    padding: 14px 16px 18px;
+    text-align: center;
+    margin-bottom: 18px;
+    position: relative;
+  }
 
-    .section-title {
-      text-align: center;
-      font-size: 17px;
-      font-weight: 800;
-      letter-spacing: -0.2px;
-      margin-bottom: 14px;
-    }
+  .sec-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    text-align: left;
+  }
 
-    /* Section 1: Frontend */
-    .sec-frontend {
-      background-color: #fffde7;
-      border-color: #fbc02d;
-    }
-    .sec-frontend .section-title { color: #000000; }
+  /* ─── SECTION COLOURS ─────────────────────────────── */
+  .sec-yellow  { background: #fffde7; border-color: #f9c92a; }
+  .sec-pink    { background: #fff0f3; border-color: #f06292; }
+  .sec-green   { background: #f1faf3; border-color: #4caf50; }
+  .sec-blue    { background: #e8f4fd; border-color: #2196f3; }
+  .sec-purple  { background: #f3eeff; border-color: #9c27b0; }
+  .sec-orange  { background: #fff8e1; border-color: #ff9800; }
 
-    /* Section 2: Security */
-    .sec-security {
-      background-color: #fff1f2;
-      border-color: #f43f5e;
-    }
-    .sec-security .section-title { color: #000000; }
+  .label-yellow  { color: #b8860b; }
+  .label-pink    { color: #c2185b; }
+  .label-green   { color: #2e7d32; }
+  .label-blue    { color: #1565c0; }
+  .label-purple  { color: #6a1b9a; }
+  .label-orange  { color: #e65100; }
 
-    /* Section 3: Docker Sandbox */
-    .sec-sandbox {
-      background-color: #f0fdf4;
-      border-color: #22c55e;
-    }
-    .sec-sandbox .section-title { color: #000000; }
+  /* ─── INNER BOXES ─────────────────────────────────── */
+  .box-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 6px;
+    flex-wrap: nowrap;
+  }
 
-    /* Section 4: Error Analysis */
-    .sec-error {
-      background-color: #f0f9ff;
-      border-color: #0284c7;
-    }
-    .sec-error .section-title { color: #000000; }
+  .box {
+    border-radius: 8px;
+    border: 2px solid;
+    padding: 8px 10px;
+    font-size: 11.5px;
+    font-weight: 600;
+    line-height: 1.35;
+    text-align: center;
+    min-width: 90px;
+    flex: 1;
+  }
 
-    /* Section 5: AI Engine */
-    .sec-ai {
-      background-color: #faf5ff;
-      border-color: #a855f7;
-    }
-    .sec-ai .section-title { color: #000000; }
+  .box-yellow { background:#fff9c4; border-color:#f9c92a; color:#5d4037; }
+  .box-pink   { background:#fce4ec; border-color:#f06292; color:#880e4f; }
+  .box-green  { background:#c8e6c9; border-color:#4caf50; color:#1b5e20; }
+  .box-blue   { background:#bbdefb; border-color:#2196f3; color:#0d47a1; }
+  .box-purple { background:#e1bee7; border-color:#9c27b0; color:#4a148c; }
+  .box-orange { background:#ffe0b2; border-color:#ff9800; color:#bf360c; }
 
-    /* Section 6: Data Management */
-    .sec-data {
-      background-color: #fffbeb;
-      border-color: #f59e0b;
-      max-width: 500px;
-      margin: 0 auto;
-    }
-    .sec-data .section-title { color: #000000; }
+  /* wide single boxes */
+  .box-wide { flex: unset; width: 100%; min-width: 0; }
 
-    /* Inner Component Boxes */
-    .box-row {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
-    }
+  /* ─── INNER ARROW ─────────────────────────────────── */
+  .arr {
+    font-size: 15px;
+    color: #666;
+    flex-shrink: 0;
+    line-height: 1;
+  }
 
-    .inner-box {
-      background: #ffffff;
-      border-radius: 8px;
-      border: 1.5px solid #cbd5e1;
-      padding: 10px 14px;
-      text-align: center;
-      font-size: 13.5px;
-      font-weight: 700;
-      color: #0f172a;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      min-height: 52px;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
-    }
+  /* ─── CONNECTOR LABEL (between sections) ─────────── */
+  .conn {
+    text-align: center;
+    font-size: 11px;
+    color: #555;
+    margin: -6px 0 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+  .conn::before, .conn::after {
+    content: '';
+    display: inline-block;
+    width: 1px;
+    height: 18px;
+    background: #aaa;
+  }
 
-    .inner-box-sub {
-      font-size: 11.5px;
-      font-weight: 500;
-      color: #475569;
-      margin-top: 3px;
-    }
+  /* ─── SUB FOOTER ROW (resource limits bar) ─────────── */
+  .res-bar {
+    margin-top: 10px;
+    border: 1.5px solid;
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 10.5px;
+    color: #2e7d32;
+    border-color: #4caf50;
+    background: #e8f5e9;
+    font-weight: 600;
+  }
 
-    /* Custom Inner Box Colors */
-    .box-blue {
-      background-color: #e0f2fe;
-      border-color: #0284c7;
-      max-width: 440px;
-      margin: 0 auto;
-      padding: 14px 20px;
-    }
+  /* ─── SVG OVERLAY ─────────────────────────────────── */
+  #svg-overlay {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    overflow: visible;
+  }
 
-    .box-pink {
-      border-color: #fb7185;
-    }
-
-    .box-green {
-      background-color: #ffffff;
-      border-color: #4ade80;
-    }
-
-    .box-green-full {
-      background-color: #ffffff;
-      border-color: #4ade80;
-      margin-top: 10px;
-      padding: 8px 16px;
-      font-size: 13px;
-      font-weight: 600;
-      color: #1e293b;
-    }
-
-    .box-blue-border {
-      border-color: #38bdf8;
-    }
-
-    .box-purple-border {
-      border-color: #c084fc;
-    }
-
-    .box-cylinder {
-      background-color: #ffffff;
-      border: 2px solid #fbbf24;
-      border-radius: 20px;
-      padding: 12px 24px;
-      max-width: 380px;
-      margin: 0 auto;
-    }
-
-    /* Horizontal Inner Arrows */
-    .h-arrow {
-      color: #0f172a;
-      font-size: 18px;
-      font-weight: 900;
-      user-select: none;
-    }
-
-    /* SVG Connectors Overlay */
-    .connectors-svg {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      z-index: 1;
-    }
-
-    /* Pill Badges on Connecting Arrows */
-    .pill-badge {
-      background: #f1f5f9;
-      border: 1px solid #cbd5e1;
-      border-radius: 6px;
-      padding: 4px 10px;
-      font-size: 11.5px;
-      font-weight: 700;
-      color: #334155;
-      text-align: center;
-      white-space: nowrap;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-      z-index: 3;
-    }
-
-    .badge-center {
-      position: absolute;
-      left: 50%;
-      transform: translate(-50%, -50%);
-    }
-
-    /* Fixed Positions for Central Flow Badges */
-    #badge-1-2 { top: 140px; }
-    #badge-2-3 { top: 310px; }
-    #badge-3-4 { top: 510px; }
-    #badge-4-5 { top: 680px; }
-    #badge-5-6 { top: 860px; }
-
-    /* Side Return Badges */
-    .badge-right-return {
-      position: absolute;
-      right: 18px;
-      top: 250px;
-      max-width: 130px;
-      line-height: 1.35;
-    }
-
-    .badge-right-blocked {
-      position: absolute;
-      right: 90px;
-      top: 285px;
-      max-width: 140px;
-      line-height: 1.3;
-    }
-
-    .badge-right-logs {
-      position: absolute;
-      right: 25px;
-      top: 615px;
-      max-width: 140px;
-      line-height: 1.35;
-    }
-
-    /* Print & Export Optimization */
-    @media print {
-      body { padding: 0; }
-      .diagram-wrapper { box-shadow: none; }
-    }
-  </style>
+  /* ─── GREY PILLS ──────────────────────────────────── */
+  .pill {
+    position: absolute;
+    right: -156px;
+    background: #e8e8e8;
+    border: 1.5px solid #ccc;
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 10.5px;
+    color: #333;
+    font-weight: 600;
+    text-align: center;
+    white-space: nowrap;
+    line-height: 1.4;
+  }
+</style>
 </head>
 <body>
+<div class="canvas" id="canvas">
 
-  <div class="diagram-wrapper" id="diagram">
-    <!-- SVG Vector Flow Connectors -->
-    <svg class="connectors-svg" viewBox="0 0 860 1020" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <!-- Arrowhead Marker -->
-        <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-          <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#0f172a" />
-        </marker>
-        <marker id="arrow-blue" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-          <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#0284c7" />
-        </marker>
-      </defs>
-
-      <!-- 1. Frontend -> 2. Security (Straight Down) -->
-      <path d="M 430 115 L 430 165" stroke="#0f172a" stroke-width="1.8" marker-end="url(#arrow)" />
-
-      <!-- 2. Security -> 3. Sandbox (Straight Down) -->
-      <path d="M 430 285 L 430 335" stroke="#0f172a" stroke-width="1.8" marker-end="url(#arrow)" />
-
-      <!-- 3. Sandbox -> 4. Error Analysis (Straight Down) -->
-      <path d="M 430 485 L 430 535" stroke="#0f172a" stroke-width="1.8" marker-end="url(#arrow)" />
-
-      <!-- 4. Error Analysis -> 5. AI Assistant (Straight Down) -->
-      <path d="M 430 655 L 430 705" stroke="#0f172a" stroke-width="1.8" marker-end="url(#arrow)" />
-
-      <!-- 5. AI Assistant -> 6. Data Management (Straight Down) -->
-      <path d="M 430 835 L 430 885" stroke="#0f172a" stroke-width="1.8" marker-end="url(#arrow)" />
-
-      <!-- Side Loop 1: Return from Section 5 (AI Assistant) back UP to Section 1 (Frontend) -->
-      <path d="M 730 770 C 795 770 795 65 590 65" stroke="#0f172a" stroke-width="1.8" fill="none" marker-end="url(#arrow)" />
-
-      <!-- Side Loop 2: Blocked Malicious Code from Request Manager -->
-      <path d="M 645 225 C 700 225 700 280 670 305" stroke="#0f172a" stroke-width="1.8" fill="none" />
-      
-      <!-- Side Loop 2 continued (Dotted line into 6. Data Management) -->
-      <path d="M 670 305 C 750 360 765 890 610 930" stroke="#64748b" stroke-width="1.6" stroke-dasharray="4 4" fill="none" marker-end="url(#arrow)" />
-    </svg>
-
-    <!-- Pill Label 1 -->
-    <div class="pill-badge badge-center" id="badge-1-2">User Code + Language</div>
-
-    <!-- Pill Label 2 -->
-    <div class="pill-badge badge-center" id="badge-2-3">Safe Code</div>
-
-    <!-- Pill Label 3 -->
-    <div class="pill-badge badge-center" id="badge-3-4">Execution Result<br/>(Errors / Output)</div>
-
-    <!-- Pill Label 4 -->
-    <div class="pill-badge badge-center" id="badge-4-5">Error Info + AST</div>
-
-    <!-- Pill Label 5 -->
-    <div class="pill-badge badge-center" id="badge-5-6">Verified Fix & Explanation</div>
-
-    <!-- Right Side Pill Badges -->
-    <div class="pill-badge badge-right-return">
-      Return Explanation<br/>
-      Fixed Code<br/>
-      Highlighted Errors
-    </div>
-
-    <div class="pill-badge badge-right-blocked">
-      Blocked<br/>(Malicious Code)
-    </div>
-
-    <div class="pill-badge badge-right-logs">
-      Logs<br/>
-      (Security blocks,<br/>
-      Errors, Fixes,<br/>
-      Model usage)
-    </div>
-
-    <!-- ========================================== -->
-    <!-- 1. FRONTEND ENVIRONMENT -->
-    <!-- ========================================== -->
-    <div class="section-card sec-frontend" style="margin-top: 10px;">
-      <div class="section-title">1. Frontend</div>
-      <div class="inner-box box-blue">
-        <div style="font-size: 15px; font-weight: 800;">Modern Web UI (React + Monaco)</div>
-        <div class="inner-box-sub">Code Editor + Terminal + Chat Console</div>
+  <!-- ══════════════════════════════════════════════════
+       1. FRONTEND
+  ══════════════════════════════════════════════════════ -->
+  <div class="sec sec-yellow" id="sec1">
+    <div class="sec-label label-yellow">1. Frontend</div>
+    <div class="box-row">
+      <div class="box box-yellow" id="b-frontend">
+        🖥️ React + Vite UI<br>
+        <span style="font-weight:400;font-size:10px;">Monaco Editor · Chat Panel · Run History</span>
       </div>
     </div>
-
-    <!-- ========================================== -->
-    <!-- 2. INPUT VALIDATION & SECURITY -->
-    <!-- ========================================== -->
-    <div class="section-card sec-security">
-      <div class="section-title">2. Input Validation & Security</div>
-      <div class="box-row">
-        <div class="inner-box box-pink">
-          <div>Input Validation</div>
-          <div class="inner-box-sub">Payload Sanitization</div>
-        </div>
-        <div class="h-arrow">➔</div>
-        <div class="inner-box box-pink">
-          <div>Static Security Scanner</div>
-          <div class="inner-box-sub">13-Layer Guardrails</div>
-        </div>
-        <div class="h-arrow">➔</div>
-        <div class="inner-box box-pink" id="box-request-mgr">
-          <div>Request Manager</div>
-          <div class="inner-box-sub">(Language Router)</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ========================================== -->
-    <!-- 3. DOCKER EXECUTION SANDBOX -->
-    <!-- ========================================== -->
-    <div class="section-card sec-sandbox">
-      <div class="section-title">3. Docker Execution Sandbox</div>
-      <div class="box-row">
-        <div class="inner-box box-green">
-          <div>C++ Container</div>
-          <div class="inner-box-sub">cpp-sandbox</div>
-        </div>
-        <div class="inner-box box-green">
-          <div>Python Container</div>
-          <div class="inner-box-sub">python-sandbox</div>
-        </div>
-        <div class="inner-box box-green">
-          <div>Java Container</div>
-          <div class="inner-box-sub">java-sandbox</div>
-        </div>
-      </div>
-      <div class="inner-box box-green-full">
-        Resource Limits (256MB) &nbsp;|&nbsp; No Network &nbsp;|&nbsp; Isolated Environment &nbsp;|&nbsp; Green Metrics
-      </div>
-    </div>
-
-    <!-- ========================================== -->
-    <!-- 4. ERROR ANALYSIS & DEBUGGING -->
-    <!-- ========================================== -->
-    <div class="section-card sec-error">
-      <div class="section-title">4. Error Analysis & Debugging</div>
-      <div class="box-row">
-        <div class="inner-box box-blue-border">
-          <div>Compiler/Runtime</div>
-          <div class="inner-box-sub">Error Parser</div>
-        </div>
-        <div class="h-arrow">➔</div>
-        <div class="inner-box box-blue-border">
-          <div>Line / Column</div>
-          <div class="inner-box-sub">Error Detection</div>
-        </div>
-        <div class="h-arrow">➔</div>
-        <div class="inner-box box-blue-border">
-          <div>AST Generation</div>
-          <div class="inner-box-sub">(Code Structure & Tree)</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ========================================== -->
-    <!-- 5. AI ASSISTANT & FIX GENERATION -->
-    <!-- ========================================== -->
-    <div class="section-card sec-ai">
-      <div class="section-title">5. AI Assistant & Fix Generation</div>
-      <div class="box-row">
-        <div class="inner-box box-purple-border">
-          <div>Model Selection ▼</div>
-          <div class="inner-box-sub">(Llama 3 / Phi-3 / Qwen)</div>
-        </div>
-        <div class="h-arrow">➔</div>
-        <div class="inner-box box-purple-border">
-          <div>LLM Multi-Agent</div>
-          <div class="inner-box-sub">(Fix Generation & Council)</div>
-        </div>
-        <div class="h-arrow">➔</div>
-        <div class="inner-box box-purple-border">
-          <div>Fix Verification</div>
-          <div class="inner-box-sub">(Compile + Sandbox Run)</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ========================================== -->
-    <!-- 6. DATA MANAGEMENT -->
-    <!-- ========================================== -->
-    <div class="section-card sec-data">
-      <div class="section-title">6. Data Management</div>
-      <div class="box-cylinder">
-        <div style="font-size: 14.5px; font-weight: 800; color: #0f172a; display: flex; align-items: center; justify-content: center; gap: 6px;">
-          <span>📁</span> Audit Logger
-        </div>
-        <div style="font-size: 11.5px; font-family: monospace; font-weight: 600; color: #475569; margin-top: 3px;">
-          system_interactions.json &amp; security_events.csv
-        </div>
-      </div>
-    </div>
-
   </div>
 
+  <div class="conn">↓ &nbsp;User Code + Language</div>
+
+  <!-- ══════════════════════════════════════════════════
+       2. INPUT VALIDATION & SECURITY
+  ══════════════════════════════════════════════════════ -->
+  <div class="sec sec-pink" id="sec2">
+    <div class="sec-label label-pink">2. Input Validation &amp; Security</div>
+    <div class="box-row">
+      <div class="box box-pink" id="b-validation">Input<br>Validation</div>
+      <div class="arr">→</div>
+      <div class="box box-pink" id="b-security">🔒 Static Security<br>Scanner</div>
+      <div class="arr">→</div>
+      <div class="box box-pink" id="b-router">Request Manager<br>(Language Router)</div>
+    </div>
+  </div>
+
+  <div class="conn">↓ &nbsp;Safe Code</div>
+
+  <!-- ══════════════════════════════════════════════════
+       3. DOCKER EXECUTION SANDBOX
+  ══════════════════════════════════════════════════════ -->
+  <div class="sec sec-green" id="sec3">
+    <div class="sec-label label-green">3. Docker Execution Sandbox</div>
+    <div class="box-row">
+      <div class="box box-green">C++<br>Container</div>
+      <div class="arr">·</div>
+      <div class="box box-green">Python<br>Container</div>
+      <div class="arr">·</div>
+      <div class="box box-green">Java<br>Container</div>
+    </div>
+    <div class="res-bar">⚙ Resource Limits &nbsp;|&nbsp; No Network &nbsp;|&nbsp; Isolated Environment</div>
+  </div>
+
+  <div class="conn">↓ &nbsp;Execution Result (Errors / Output)</div>
+
+  <!-- ══════════════════════════════════════════════════
+       4. ERROR ANALYSIS & DEBUGGING
+  ══════════════════════════════════════════════════════ -->
+  <div class="sec sec-blue" id="sec4">
+    <div class="sec-label label-blue">4. Error Analysis &amp; Debugging</div>
+    <div class="box-row">
+      <div class="box box-blue">Compiler/Runtime<br>Error Parser</div>
+      <div class="arr">→</div>
+      <div class="box box-blue">Line / Column<br>Error Detection</div>
+      <div class="arr">→</div>
+      <div class="box box-blue" id="b-ast">🌳 AST Generation<br>(Code Structure)</div>
+    </div>
+  </div>
+
+  <div class="conn">↓ &nbsp;Error Info + AST</div>
+
+  <!-- ══════════════════════════════════════════════════
+       5. AI ASSISTANT & FIX GENERATION
+  ══════════════════════════════════════════════════════ -->
+  <div class="sec sec-purple" id="sec5">
+    <div class="sec-label label-purple">5. AI Assistant &amp; Fix Generation</div>
+    <div class="box-row">
+      <div class="box box-purple" id="b-modelsel">Model Selection ▾<br><span style="font-weight:400;font-size:10px;">Llama 3 / Phi-3 / Qwen</span></div>
+      <div class="arr">→</div>
+      <div class="box box-purple" id="b-llm">🤖 LLM<br>(Fix Generation)</div>
+      <div class="arr">→</div>
+      <div class="box box-purple" id="b-verify">Fix Verification<br>(Compile + Run)</div>
+    </div>
+  </div>
+
+  <div class="conn">↓ &nbsp;Verified Fix &amp; Explanation</div>
+
+  <!-- ══════════════════════════════════════════════════
+       6. DATA MANAGEMENT
+  ══════════════════════════════════════════════════════ -->
+  <div class="sec sec-orange" id="sec6">
+    <div class="sec-label label-orange">6. Data Management</div>
+    <div class="box-row">
+      <div class="box box-orange box-wide">
+        🗄️ Audit Logger &nbsp;·&nbsp; system_interactions.json
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── SVG for curved return arrows ─────────────── -->
+  <svg id="svg-overlay" xmlns="http://www.w3.org/2000/svg"></svg>
+
+  <!-- ─── RIGHT-SIDE GREY PILLS ─────────────────────── -->
+  <div class="pill" id="pill1" style="top:0;">
+    Return Explanation<br>Fixed Code<br>Highlighted Errors
+  </div>
+  <div class="pill" id="pill2" style="top:0;">
+    Blocked<br>(Malicious Code)
+  </div>
+  <div class="pill" id="pill3" style="top:0;">
+    Logs<br>(Security blocks,<br>Errors, Fixes,<br>Model usage)
+  </div>
+
+</div><!-- /canvas -->
+
+<script>
+/* ── Draw the three curved side arrows after layout ── */
+window.addEventListener('load', () => {
+  const canvas = document.getElementById('canvas');
+  const svg    = document.getElementById('svg-overlay');
+
+  /* helper: get centre-right point of an element relative to canvas */
+  function cr(el, yFrac = 0.5) {
+    const cr2 = el.getBoundingClientRect();
+    const cc  = canvas.getBoundingClientRect();
+    return {
+      x: cr2.right  - cc.left,
+      y: cr2.top    - cc.top  + cr2.height * yFrac
+    };
+  }
+
+  /* helper: get centre-left of element relative to canvas */
+  function cl(el, yFrac = 0.5) {
+    const cr2 = el.getBoundingClientRect();
+    const cc  = canvas.getBoundingClientRect();
+    return {
+      x: cr2.left   - cc.left,
+      y: cr2.top    - cc.top  + cr2.height * yFrac
+    };
+  }
+
+  const sec1 = document.getElementById('sec1');
+  const sec2 = document.getElementById('sec2');
+  const sec5 = document.getElementById('sec5');
+  const sec6 = document.getElementById('sec6');
+  const bRouter   = document.getElementById('b-router');
+  const bFrontend = document.getElementById('b-frontend');
+  const pill1 = document.getElementById('pill1');
+  const pill2 = document.getElementById('pill2');
+  const pill3 = document.getElementById('pill3');
+
+  const canvasRect = canvas.getBoundingClientRect();
+  const W = canvasRect.width;
+
+  /* ───────────────────────────────────────────────────
+     ARROW 1 — solid, sec5 right-edge → loops up → sec1 right-edge
+     (thick, black, like the reference)
+  ─────────────────────────────────────────────────── */
+  {
+    const from = cr(sec5, 0.5);  // right mid of section 5
+    const to   = cr(sec1, 0.5);  // right mid of section 1
+
+    const rx = W + 36;           // how far right the arc goes
+    const d  = `M ${from.x} ${from.y}
+                 L ${rx} ${from.y}
+                 Q ${rx + 24} ${from.y}, ${rx + 24} ${from.y - 24}
+                 L ${rx + 24} ${to.y + 24}
+                 Q ${rx + 24} ${to.y}, ${rx} ${to.y}
+                 L ${to.x} ${to.y}`;
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d', d.replace(/\n\s+/g,' '));
+    path.setAttribute('fill','none');
+    path.setAttribute('stroke','#222');
+    path.setAttribute('stroke-width','2');
+    path.setAttribute('marker-end','url(#arrow-solid)');
+    svg.appendChild(path);
+
+    /* position pill1 vertically centred on this arc */
+    const midY = (from.y + to.y) / 2;
+    pill1.style.top = (midY - pill1.offsetHeight/2) + 'px';
+  }
+
+  /* ───────────────────────────────────────────────────
+     ARROW 2 — dashed, bRouter right → sec6 right edge (then into sec6)
+     Represents: malicious code blocked → audit logger
+  ─────────────────────────────────────────────────── */
+  {
+    const from = cr(bRouter,  0.5);
+    const to   = cr(sec6,     0.5);
+
+    const rx = W + 80;
+    const d  = `M ${from.x} ${from.y}
+                 L ${rx} ${from.y}
+                 Q ${rx+20} ${from.y}, ${rx+20} ${from.y+20}
+                 L ${rx+20} ${to.y - 20}
+                 Q ${rx+20} ${to.y}, ${rx} ${to.y}
+                 L ${to.x} ${to.y}`;
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d', d.replace(/\n\s+/g,' '));
+    path.setAttribute('fill','none');
+    path.setAttribute('stroke','#555');
+    path.setAttribute('stroke-width','1.6');
+    path.setAttribute('stroke-dasharray','6 4');
+    path.setAttribute('marker-end','url(#arrow-dashed)');
+    svg.appendChild(path);
+
+    /* position pill2 — midway */
+    const midY2 = (from.y + to.y) / 2;
+    pill2.style.top = (midY2 - pill2.offsetHeight/2) + 'px';
+  }
+
+  /* ───────────────────────────────────────────────────
+     ARROW 3 — dashed, sec2 right → sec6 right (Logs)
+     Runs further right than arrow 2
+  ─────────────────────────────────────────────────── */
+  {
+    const from = cr(sec2, 0.5);
+    const to   = cr(sec6, 0.5);
+
+    const rx = W + 118;
+    const d  = `M ${from.x} ${from.y}
+                 L ${rx} ${from.y}
+                 Q ${rx+20} ${from.y}, ${rx+20} ${from.y+20}
+                 L ${rx+20} ${to.y - 20}
+                 Q ${rx+20} ${to.y}, ${rx} ${to.y}
+                 L ${to.x} ${to.y}`;
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d', d.replace(/\n\s+/g,' '));
+    path.setAttribute('fill','none');
+    path.setAttribute('stroke','#555');
+    path.setAttribute('stroke-width','1.6');
+    path.setAttribute('stroke-dasharray','6 4');
+    path.setAttribute('marker-end','url(#arrow-dashed)');
+    svg.appendChild(path);
+
+    /* position pill3 */
+    const midY3 = (from.y + to.y) / 2;
+    pill3.style.top = (midY3 - pill3.offsetHeight/2) + 'px';
+  }
+
+  /* ── Define arrow markers ── */
+  const defs = document.createElementNS('http://www.w3.org/2000/svg','defs');
+
+  function mkMarker(id, color) {
+    const m = document.createElementNS('http://www.w3.org/2000/svg','marker');
+    m.setAttribute('id', id);
+    m.setAttribute('markerWidth','8');
+    m.setAttribute('markerHeight','8');
+    m.setAttribute('refX','7');
+    m.setAttribute('refY','3');
+    m.setAttribute('orient','auto');
+    const p = document.createElementNS('http://www.w3.org/2000/svg','path');
+    p.setAttribute('d','M0,0 L0,6 L8,3 z');
+    p.setAttribute('fill', color);
+    m.appendChild(p);
+    return m;
+  }
+
+  defs.appendChild(mkMarker('arrow-solid',  '#222'));
+  defs.appendChild(mkMarker('arrow-dashed', '#555'));
+  svg.insertBefore(defs, svg.firstChild);
+
+  /* ── Expand SVG viewBox to accommodate right-side pills ── */
+  const totalH = canvas.offsetHeight;
+  const totalW = W + 220;
+  svg.setAttribute('viewBox', `0 0 ${totalW} ${totalH}`);
+  svg.setAttribute('width', totalW);
+  svg.setAttribute('height', totalH);
+  svg.style.left = '0';
+  svg.style.width = totalW + 'px';
+
+  /* widen canvas wrapper so pills don't clip */
+  canvas.style.width  = '660px';
+  canvas.style.marginRight = '180px';
+});
+</script>
 </body>
 </html>
