@@ -42,17 +42,17 @@ export const GreenMetrics: React.FC<GreenMetricsProps> = ({ metrics }) => {
   };
 
   return (
-    <div className="h-16 px-3 bg-dark-card/90 border-b border-dark-border flex items-center justify-between select-none">
+    <div className="h-16 px-3 bg-slate-100 dark:bg-dark-card/90 border-b border-slate-300 dark:border-dark-border flex items-center justify-between select-none">
       <div className="grid grid-cols-4 gap-2 flex-1 mr-3">
         {/* Metric 1: Latency */}
-        <div className="flex items-center space-x-2 bg-dark-bg/60 px-2.5 py-1.5 rounded-md border border-dark-border/70">
-          <div className="p-1 rounded bg-blue-500/10 text-blue-400">
+        <div className="flex items-center space-x-2 bg-white dark:bg-dark-bg/60 px-2.5 py-1.5 rounded-md border border-slate-300 dark:border-dark-border/70 shadow-sm">
+          <div className="p-1 rounded bg-blue-500/15 text-blue-600 dark:text-blue-400">
             <Timer className="w-3.5 h-3.5" />
           </div>
           <div className="flex flex-col min-w-0">
-            <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">Latency</span>
+            <span className="text-[10px] uppercase font-bold text-slate-600 dark:text-slate-400 tracking-wider">Latency</span>
             <div className="flex items-baseline space-x-1">
-              <span className="font-mono text-xs font-bold text-slate-100">{timeMs.toFixed(1)}</span>
+              <span className="font-mono text-xs font-bold text-slate-900 dark:text-slate-100">{timeMs.toFixed(1)}</span>
               <span className="text-[10px] text-slate-500 font-mono">ms</span>
             </div>
             {metrics?.delta_time_ms !== undefined && formatDelta(metrics.delta_time_ms, 'ms')}
@@ -60,14 +60,14 @@ export const GreenMetrics: React.FC<GreenMetricsProps> = ({ metrics }) => {
         </div>
 
         {/* Metric 2: Memory */}
-        <div className="flex items-center space-x-2 bg-dark-bg/60 px-2.5 py-1.5 rounded-md border border-dark-border/70">
-          <div className="p-1 rounded bg-purple-500/10 text-purple-400">
+        <div className="flex items-center space-x-2 bg-white dark:bg-dark-bg/60 px-2.5 py-1.5 rounded-md border border-slate-300 dark:border-dark-border/70 shadow-sm">
+          <div className="p-1 rounded bg-purple-500/15 text-purple-600 dark:text-purple-400">
             <HardDrive className="w-3.5 h-3.5" />
           </div>
           <div className="flex flex-col min-w-0">
-            <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">Memory</span>
+            <span className="text-[10px] uppercase font-bold text-slate-600 dark:text-slate-400 tracking-wider">Memory</span>
             <div className="flex items-baseline space-x-1">
-              <span className="font-mono text-xs font-bold text-slate-100">{memoryKb.toLocaleString()}</span>
+              <span className="font-mono text-xs font-bold text-slate-900 dark:text-slate-100">{memoryKb.toLocaleString()}</span>
               <span className="text-[10px] text-slate-500 font-mono">KB</span>
             </div>
             <span className="text-[10px] text-slate-500">256MB Cap</span>
@@ -75,15 +75,15 @@ export const GreenMetrics: React.FC<GreenMetricsProps> = ({ metrics }) => {
         </div>
 
         {/* Metric 3: Energy (Full Un-truncated Wh) */}
-        <div className="flex items-center space-x-2 bg-dark-bg/60 px-2.5 py-1.5 rounded-md border border-dark-border/70">
-          <div className="p-1 rounded bg-amber-500/10 text-amber-400">
+        <div className="flex items-center space-x-2 bg-white dark:bg-dark-bg/60 px-2.5 py-1.5 rounded-md border border-slate-300 dark:border-dark-border/70 shadow-sm">
+          <div className="p-1 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400">
             <Zap className="w-3.5 h-3.5" />
           </div>
           <div className="flex flex-col min-w-0">
-            <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">Energy Used</span>
+            <span className="text-[10px] uppercase font-bold text-slate-600 dark:text-slate-400 tracking-wider">Energy Used</span>
             <div className="flex items-baseline space-x-1">
               {/* Full un-truncated number with complete precision */}
-              <span className="font-mono text-xs font-bold text-slate-100 truncate" title={`${energyWh} Wh`}>
+              <span className="font-mono text-xs font-bold text-slate-900 dark:text-slate-100 truncate" title={`${energyWh} Wh`}>
                 {energyWh.toFixed(6)}
               </span>
               <span className="text-[10px] text-slate-500 font-mono">Wh</span>
@@ -93,14 +93,14 @@ export const GreenMetrics: React.FC<GreenMetricsProps> = ({ metrics }) => {
         </div>
 
         {/* Metric 4: Carbon Emitted (Full Un-truncated Grams) */}
-        <div className="flex items-center space-x-2 bg-dark-bg/60 px-2.5 py-1.5 rounded-md border border-dark-border/70">
-          <div className="p-1 rounded bg-emerald-500/10 text-emerald-400">
+        <div className="flex items-center space-x-2 bg-white dark:bg-dark-bg/60 px-2.5 py-1.5 rounded-md border border-slate-300 dark:border-dark-border/70 shadow-sm">
+          <div className="p-1 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
             <Globe2 className="w-3.5 h-3.5" />
           </div>
           <div className="flex flex-col min-w-0">
-            <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">Carbon</span>
+            <span className="text-[10px] uppercase font-bold text-slate-600 dark:text-slate-400 tracking-wider">Carbon</span>
             <div className="flex items-baseline space-x-1">
-              <span className="font-mono text-xs font-bold text-slate-100 truncate" title={`${carbonG} g CO2eq`}>
+              <span className="font-mono text-xs font-bold text-slate-900 dark:text-slate-100 truncate" title={`${carbonG} g CO2eq`}>
                 {carbonG.toFixed(6)}
               </span>
               <span className="text-[10px] text-slate-500 font-mono">g</span>
@@ -111,18 +111,18 @@ export const GreenMetrics: React.FC<GreenMetricsProps> = ({ metrics }) => {
       </div>
 
       {/* Eco Score Badge */}
-      <div className="flex items-center space-x-2 bg-gradient-to-r from-emerald-950/40 to-dark-bg px-3 py-1.5 rounded-md border border-emerald-500/30 shadow-inner">
-        <div className="p-1.5 rounded-full bg-emerald-500/20 text-emerald-400 animate-pulse">
+      <div className="flex items-center space-x-2 bg-gradient-to-r from-emerald-500/15 to-white dark:from-emerald-950/40 dark:to-dark-bg px-3 py-1.5 rounded-md border border-emerald-500/30 shadow-inner">
+        <div className="p-1.5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 animate-pulse">
           <Leaf className="w-4 h-4" />
         </div>
         <div className="flex flex-col text-right">
           <div className="flex items-center space-x-1">
-            <span className="text-[10px] uppercase tracking-wider text-emerald-400 font-semibold">Eco Score</span>
-            <span className="font-mono font-black text-sm text-emerald-300 px-1 py-0.2 bg-emerald-500/20 rounded">
+            <span className="text-[10px] uppercase tracking-wider text-emerald-700 dark:text-emerald-400 font-bold">Eco Score</span>
+            <span className="font-mono font-black text-sm text-emerald-700 dark:text-emerald-300 px-1 py-0.2 bg-emerald-500/20 rounded">
               {ecoScore}
             </span>
           </div>
-          <span className="text-[10px] text-slate-400 font-medium">{ecoLabel}</span>
+          <span className="text-[10px] text-slate-600 dark:text-slate-400 font-semibold">{ecoLabel}</span>
         </div>
       </div>
     </div>

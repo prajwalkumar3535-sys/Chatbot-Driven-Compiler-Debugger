@@ -191,7 +191,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
   };
 
   return (
-    <div className="h-full flex flex-col bg-dark-bg border-r border-dark-border select-none">
+    <div className="h-full flex flex-col bg-white dark:bg-dark-bg border-r border-slate-300 dark:border-dark-border select-none">
       {/* Hidden File Inputs for PC Access */}
       <input
         ref={fileInputRef}
@@ -211,7 +211,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
       />
 
       {/* Top File Tab Header with Tab Management */}
-      <div className="h-10 px-2 bg-dark-card/60 border-b border-dark-border flex items-center justify-between text-xs">
+      <div className="h-10 px-2 bg-slate-100 dark:bg-dark-card/60 border-b border-slate-300 dark:border-dark-border flex items-center justify-between text-xs">
         {/* Left: Tab List & Add Tab */}
         <div className="flex items-center space-x-1 overflow-x-auto max-w-[65%] py-1">
           {files.map((file) => {
@@ -224,11 +224,11 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
                 onClick={() => onSelectFile(file.id)}
                 className={`group flex items-center space-x-1.5 px-3 py-1.5 rounded-t font-mono text-[11px] cursor-pointer transition-all border-b-2 shrink-0 ${
                   isActive
-                    ? 'bg-dark-bg border-emerald-500 text-slate-100 font-semibold'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-dark-hover border-transparent'
+                    ? 'bg-white dark:bg-dark-bg border-emerald-600 dark:border-emerald-500 text-slate-900 dark:text-slate-100 font-bold shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/70 dark:hover:bg-dark-hover border-transparent'
                 }`}
               >
-                <FileCode2 className={`w-3.5 h-3.5 ${isActive ? 'text-emerald-400' : 'text-slate-500'}`} />
+                <FileCode2 className={`w-3.5 h-3.5 ${isActive ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'}`} />
 
                 {isEditing ? (
                   <input
@@ -241,7 +241,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
                       if (e.key === 'Enter') handleFinishRename(file.id);
                       if (e.key === 'Escape') setEditingTabId(null);
                     }}
-                    className="bg-dark-card border border-indigo-500 px-1 py-0 rounded text-slate-100 outline-none w-24 text-[11px]"
+                    className="bg-white dark:bg-dark-card border border-indigo-500 px-1 py-0 rounded text-slate-900 dark:text-slate-100 outline-none w-24 text-[11px]"
                   />
                 ) : (
                   <span
@@ -257,7 +257,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
                 {!isEditing && (
                   <button
                     onClick={(e) => handleStartRename(file, e)}
-                    className="opacity-0 group-hover:opacity-100 p-0.5 hover:text-slate-200 text-slate-500 transition-opacity"
+                    className="opacity-0 group-hover:opacity-100 p-0.5 hover:text-slate-900 dark:hover:text-slate-200 text-slate-500 transition-opacity"
                     title="Rename Tab"
                   >
                     <Edit2 className="w-2.5 h-2.5" />
@@ -271,7 +271,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
                       e.stopPropagation();
                       onCloseFile(file.id);
                     }}
-                    className="p-0.5 hover:bg-slate-700/50 rounded-full text-slate-500 hover:text-rose-400 transition-colors"
+                    className="p-0.5 hover:bg-slate-300 dark:hover:bg-slate-700/50 rounded-full text-slate-500 hover:text-rose-500 transition-colors"
                     title="Close Tab"
                   >
                     <X className="w-3 h-3" />
@@ -285,22 +285,22 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
           <button
             onClick={() => onAddFile()}
             title="Create New Tab"
-            className="flex items-center space-x-1 px-2 py-1.5 rounded text-slate-400 hover:text-slate-100 hover:bg-dark-hover transition-colors font-medium text-xs shrink-0"
+            className="flex items-center space-x-1 px-2 py-1.5 rounded text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/70 dark:hover:bg-dark-hover transition-colors font-semibold text-xs shrink-0"
           >
-            <Plus className="w-3.5 h-3.5 text-emerald-400" />
+            <Plus className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
             <span className="text-[11px]">Tab</span>
           </button>
         </div>
 
         {/* Right: PC Open Options & Editor Controls */}
-        <div className="flex items-center space-x-1 text-slate-400 shrink-0">
+        <div className="flex items-center space-x-1 text-slate-600 dark:text-slate-400 shrink-0">
           {/* Open File from PC */}
           <button
             onClick={() => fileInputRef.current?.click()}
             title="Open File(s) from PC"
-            className="flex items-center space-x-1 px-2 py-1 text-xs rounded hover:text-slate-100 hover:bg-dark-hover text-slate-300 transition-colors"
+            className="flex items-center space-x-1 px-2 py-1 text-xs rounded hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/70 dark:hover:bg-dark-hover text-slate-700 dark:text-slate-300 transition-colors font-medium"
           >
-            <Upload className="w-3.5 h-3.5 text-indigo-400" />
+            <Upload className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
             <span className="text-[11px] hidden sm:inline">Open File</span>
           </button>
 
@@ -308,9 +308,9 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
           <button
             onClick={() => folderInputRef.current?.click()}
             title="Open Folder from PC"
-            className="flex items-center space-x-1 px-2 py-1 text-xs rounded hover:text-slate-100 hover:bg-dark-hover text-slate-300 transition-colors"
+            className="flex items-center space-x-1 px-2 py-1 text-xs rounded hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/70 dark:hover:bg-dark-hover text-slate-700 dark:text-slate-300 transition-colors font-medium"
           >
-            <FolderOpen className="w-3.5 h-3.5 text-amber-400" />
+            <FolderOpen className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
             <span className="text-[11px] hidden sm:inline">Open Folder</span>
           </button>
 
@@ -318,38 +318,38 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
             <button
               onClick={() => setShowExplorer(!showExplorer)}
               title="Toggle Folder Explorer Sidebar"
-              className={`p-1 rounded transition-colors ${showExplorer ? 'text-amber-400 bg-amber-500/10' : 'hover:text-slate-100'}`}
+              className={`p-1 rounded transition-colors ${showExplorer ? 'text-amber-600 dark:text-amber-400 bg-amber-500/15' : 'hover:text-slate-900 dark:hover:text-slate-100'}`}
             >
               <Folder className="w-3.5 h-3.5" />
             </button>
           )}
 
-          <div className="h-3 w-[1px] bg-dark-border mx-1" />
+          <div className="h-3 w-[1px] bg-slate-300 dark:bg-dark-border mx-1" />
 
           {/* Font Scaling */}
           <button
             onClick={() => onFontSizeChange(Math.max(11, fontSize - 1))}
             title="Decrease Font Size"
-            className="p-1 hover:text-slate-100 hover:bg-dark-hover rounded transition-colors"
+            className="p-1 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/70 dark:hover:bg-dark-hover rounded transition-colors text-slate-700 dark:text-slate-300"
           >
             <ZoomOut className="w-3.5 h-3.5" />
           </button>
-          <span className="text-[11px] font-mono px-0.5 text-slate-300">{fontSize}px</span>
+          <span className="text-[11px] font-mono px-0.5 text-slate-900 dark:text-slate-200 font-bold">{fontSize}px</span>
           <button
             onClick={() => onFontSizeChange(Math.min(24, fontSize + 1))}
             title="Increase Font Size"
-            className="p-1 hover:text-slate-100 hover:bg-dark-hover rounded transition-colors"
+            className="p-1 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/70 dark:hover:bg-dark-hover rounded transition-colors text-slate-700 dark:text-slate-300"
           >
             <ZoomIn className="w-3.5 h-3.5" />
           </button>
 
-          <div className="h-3 w-[1px] bg-dark-border mx-1" />
+          <div className="h-3 w-[1px] bg-slate-300 dark:bg-dark-border mx-1" />
 
           {/* Minimap Toggle */}
           <button
             onClick={() => setShowMinimap(!showMinimap)}
             title="Toggle Minimap"
-            className={`p-1 rounded transition-colors ${showMinimap ? 'text-emerald-400' : 'hover:text-slate-100'}`}
+            className={`p-1 rounded transition-colors ${showMinimap ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'hover:text-slate-900 dark:hover:text-slate-100 text-slate-700 dark:text-slate-300'}`}
           >
             <MapPin className="w-3.5 h-3.5" />
           </button>
@@ -358,7 +358,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
           <button
             onClick={copyCode}
             title="Copy Code"
-            className="p-1 hover:text-slate-100 hover:bg-dark-hover rounded transition-colors"
+            className="p-1 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/70 dark:hover:bg-dark-hover rounded transition-colors text-slate-700 dark:text-slate-300"
           >
             <Copy className="w-3.5 h-3.5" />
           </button>
@@ -367,7 +367,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
           <button
             onClick={downloadCode}
             title="Download Source Code"
-            className="p-1 hover:text-slate-100 hover:bg-dark-hover rounded transition-colors"
+            className="p-1 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/70 dark:hover:bg-dark-hover rounded transition-colors text-slate-700 dark:text-slate-300"
           >
             <Download className="w-3.5 h-3.5" />
           </button>
@@ -376,7 +376,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
           <button
             onClick={onResetTemplate}
             title="Reset to Starter Template"
-            className="p-1 hover:text-slate-100 hover:bg-dark-hover rounded transition-colors"
+            className="p-1 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/70 dark:hover:bg-dark-hover rounded transition-colors text-slate-700 dark:text-slate-300"
           >
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
@@ -387,15 +387,15 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
       <div className="flex-1 relative overflow-hidden flex">
         {/* Folder Explorer Sidebar (if folder opened) */}
         {showExplorer && folderFiles.length > 0 && (
-          <div className="w-52 h-full bg-dark-card border-r border-dark-border flex flex-col shrink-0 text-xs">
-            <div className="p-2 border-b border-dark-border flex items-center justify-between font-semibold text-slate-300">
+          <div className="w-52 h-full bg-slate-50 dark:bg-dark-card border-r border-slate-300 dark:border-dark-border flex flex-col shrink-0 text-xs">
+            <div className="p-2 border-b border-slate-300 dark:border-dark-border flex items-center justify-between font-bold text-slate-800 dark:text-slate-200">
               <div className="flex items-center space-x-1.5 truncate">
-                <Folder className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <Folder className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
                 <span className="truncate">{folderName || 'Folder'}</span>
               </div>
               <button
                 onClick={() => setShowExplorer(false)}
-                className="p-1 hover:text-slate-100 text-slate-500 rounded"
+                className="p-1 hover:text-slate-900 dark:hover:text-slate-100 text-slate-500 rounded"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -409,7 +409,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
                     const lang = detectLanguageFromFilename(ff.name);
                     onAddFile(ff.name, lang, ff.content);
                   }}
-                  className="w-full text-left px-2 py-1 rounded text-[11px] font-mono text-slate-400 hover:text-slate-100 hover:bg-dark-hover flex items-center space-x-1.5 truncate transition-colors"
+                  className="w-full text-left px-2 py-1 rounded text-[11px] font-mono text-slate-700 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/70 dark:hover:bg-dark-hover flex items-center space-x-1.5 truncate transition-colors"
                 >
                   <File className="w-3 h-3 text-slate-500 shrink-0" />
                   <span className="truncate">{ff.name}</span>
@@ -420,7 +420,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
         )}
 
         {/* Monaco Editor Container */}
-        <div className="flex-1 relative overflow-hidden">
+        <div className="flex-1 relative overflow-hidden bg-white dark:bg-dark-bg">
           <Editor
             height="100%"
             language={getMonacoLanguage(activeFile?.name || language.filename)}
@@ -447,18 +447,18 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
       </div>
 
       {/* Editor Action Bottom Bar */}
-      <div className="h-13 px-4 py-2 bg-dark-card/90 border-t border-dark-border flex items-center justify-between">
-        <div className="flex items-center space-x-2 text-xs text-slate-400">
+      <div className="h-13 px-4 py-2 bg-slate-100 dark:bg-dark-card/90 border-t border-slate-300 dark:border-dark-border flex items-center justify-between">
+        <div className="flex items-center space-x-2 text-xs text-slate-600 dark:text-slate-400">
           <button
             onClick={onClear}
             title="Clear Current Tab"
-            className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded bg-dark-hover hover:bg-slate-800 text-slate-300 transition-colors"
+            className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded bg-slate-200 dark:bg-dark-hover hover:bg-slate-300 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 font-medium transition-colors"
           >
-            <Trash2 className="w-3.5 h-3.5 text-slate-400" />
+            <Trash2 className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
             <span>Clear</span>
           </button>
-          <span className="text-[11px] font-mono text-slate-500 hidden sm:inline">
-            Shortcuts: <kbd className="px-1 py-0.5 bg-slate-800 rounded text-slate-300">Ctrl+Enter</kbd> to run
+          <span className="text-[11px] font-mono text-slate-600 dark:text-slate-400 font-medium hidden sm:inline">
+            Shortcuts: <kbd className="px-1 py-0.5 bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded text-slate-800 dark:text-slate-300 font-semibold">Ctrl+Enter</kbd> to run
           </span>
         </div>
 
@@ -467,9 +467,9 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
           <button
             onClick={onDebugAI}
             title="Analyze active tab with AI Detective & Sentinel"
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-md bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-400 border border-indigo-500/20 text-xs font-medium transition-all"
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-md bg-indigo-50 dark:bg-indigo-600/10 hover:bg-indigo-100 dark:hover:bg-indigo-600/20 text-indigo-700 dark:text-indigo-400 border border-indigo-300 dark:border-indigo-500/20 text-xs font-semibold transition-all shadow-sm"
           >
-            <Sparkles className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
+            <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 animate-pulse" />
             <span>Debug with AI</span>
           </button>
 
@@ -477,7 +477,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
           <button
             onClick={onRun}
             disabled={isRunning}
-            className={`flex items-center space-x-2 px-5 py-1.5 rounded-md font-semibold text-xs text-white shadow-lg transition-all ${
+            className={`flex items-center space-x-2 px-5 py-1.5 rounded-md font-bold text-xs text-white shadow-lg transition-all ${
               isRunning
                 ? 'bg-emerald-700 cursor-not-allowed opacity-80'
                 : 'bg-emerald-600 hover:bg-emerald-500 hover:shadow-emerald-500/25 active:scale-95'

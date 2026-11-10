@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -14,6 +14,10 @@
   --text-muted: #94a3b8;
   --text-subtle: #64748b;
   --code-bg: #070a0f;
+  --code-color: #6ee7b7;
+  --chat-bubble-bg: #111827;
+  --chat-bubble-border: rgba(255, 255, 255, 0.08);
+  --chat-bubble-text: #e2e8f0;
 }
 
 .light, [data-theme="light"] {
@@ -21,11 +25,16 @@
   --bg-card: #f8fafc;
   --bg-panel: #f1f5f9;
   --bg-hover: rgba(0, 0, 0, 0.05);
-  --border-color: rgba(0, 0, 0, 0.1);
+  --border-color: rgba(0, 0, 0, 0.12);
   --text-main: #0f172a;
-  --text-muted: #475569;
-  --text-subtle: #94a3b8;
-  --code-bg: #f8fafc;
+  --text-muted: #334155;
+  --text-subtle: #64748b;
+  --code-bg: #0f172a;
+  --code-color: #34d399;
+  --chat-bubble-bg: #f8fafc;
+  --chat-bubble-border: rgba(0, 0, 0, 0.12);
+  --chat-bubble-text: #0f172a;
+  color-scheme: light;
 }
 
 @layer base {
@@ -35,7 +44,7 @@
     font-family: 'Inter', system-ui, sans-serif;
     overflow: hidden;
     user-select: none;
-    transition: background-color 0.2s ease, color 0.2s ease;
+    transition: background-color 0.15s ease, color 0.15s ease;
   }
 
   /* Custom high-polish scrollbars */
@@ -47,10 +56,146 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: rgba(148, 163, 184, 0.25);
+    background: rgba(148, 163, 184, 0.35);
     border-radius: 4px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(148, 163, 184, 0.4);
+    background: rgba(148, 163, 184, 0.55);
   }
+}
+
+/* =====================================================================
+   LIGHT THEME HIGH-CONTRAST OVERRIDES
+   Ensures ALL letters, headings, code, and controls are 100% crystal clear
+   ===================================================================== */
+
+.light .text-slate-100,
+.light .text-slate-200 {
+  color: #0f172a !important; /* Deep saturated black/slate for primary headers & text */
+}
+
+.light .text-slate-300 {
+  color: #1e293b !important; /* Slate-800 for active tabs & labels */
+}
+
+.light .text-slate-400 {
+  color: #334155 !important; /* High-contrast Slate-700 for secondary text */
+}
+
+.light .text-slate-500 {
+  color: #475569 !important; /* Slate-600 for hints, timestamps & badges */
+}
+
+.light .text-slate-600 {
+  color: #64748b !important;
+}
+
+/* Markdown prose text inside AI chat messages in light mode */
+.light .prose-invert {
+  --tw-prose-body: #0f172a !important;
+  --tw-prose-headings: #0f172a !important;
+  --tw-prose-lead: #334155 !important;
+  --tw-prose-links: #2563eb !important;
+  --tw-prose-bold: #0f172a !important;
+  --tw-prose-counters: #475569 !important;
+  --tw-prose-bullets: #475569 !important;
+  --tw-prose-hr: #cbd5e1 !important;
+  --tw-prose-quotes: #0f172a !important;
+  --tw-prose-quote-borders: #94a3b8 !important;
+  --tw-prose-captions: #475569 !important;
+  --tw-prose-code: #0f172a !important;
+  --tw-prose-pre-code: #f8fafc !important;
+  --tw-prose-pre-bg: #0f172a !important;
+  --tw-prose-th-borders: #cbd5e1 !important;
+  --tw-prose-td-borders: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+/* Markdown inline codes in light mode */
+.light code {
+  color: #0f172a !important;
+  background-color: #e2e8f0 !important;
+}
+
+/* Code blocks inside chat: ensure they always have sleek dark background with vibrant readable code in both themes */
+.code-block-container {
+  background-color: #0b1120 !important;
+  border-color: #1e293b !important;
+}
+
+.code-block-container pre,
+.code-block-container code {
+  color: #4ade80 !important; /* Bright emerald-400 */
+  background-color: transparent !important;
+}
+
+/* Select dropdowns and options in light theme */
+.light select {
+  color: #0f172a !important;
+  background-color: #ffffff !important;
+}
+
+.light select option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+.dark select option {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+}
+
+/* Terminal stdout and stderr in light theme */
+.light .terminal-stdout {
+  background-color: #f0fdf4 !important;
+  border-color: #bbf7d0 !important;
+  color: #15803d !important; /* High-contrast emerald-700 */
+}
+
+.light .terminal-stderr {
+  background-color: #fff1f2 !important;
+  border-color: #fecdd3 !important;
+  color: #be123c !important; /* High-contrast rose-700 */
+}
+
+/* Chat Assistant Bubble in Light mode */
+.light .chat-assistant-bubble {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 1px 2px -1px rgba(0, 0, 0, 0.08) !important;
+}
+
+.light .chat-user-bubble {
+  background-color: #2563eb !important; /* Vibrant royal blue */
+  color: #ffffff !important;
+}
+
+/* Tab bar in light mode */
+.light .active-tab {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  font-weight: 600 !important;
+  border-bottom-color: #10b981 !important;
+}
+
+.light .inactive-tab {
+  color: #475569 !important;
+}
+.light .inactive-tab:hover {
+  color: #0f172a !important;
+  background-color: #f1f5f9 !important;
+}
+
+/* Action bottom bar in light mode */
+.light .editor-bottom-bar {
+  background-color: #ffffff !important;
+  border-top-color: #e2e8f0 !important;
+}
+
+/* Keyboard shortcut kbd styling in light mode */
+.light kbd {
+  background-color: #e2e8f0 !important;
+  color: #1e293b !important;
+  border: 1px solid #cbd5e1 !important;
 }
