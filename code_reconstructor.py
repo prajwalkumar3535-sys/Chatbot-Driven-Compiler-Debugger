@@ -185,6 +185,8 @@ def reconstruct_full_code(original_code: str, fix_snippet: str, language: str = 
     
     If the file is 5,000 lines and the AI only modified 1 function, this preserves
     all 4,990 untouched lines and returns the COMPLETE 5,000-line code.
+    For small files (< 150 lines), any full snippet without placeholders cleanly replaces
+    or updates the file so 'Apply to Editor' works seamlessly.
     """
     if not fix_snippet or not fix_snippet.strip():
         return original_code
@@ -195,22 +197,13 @@ def reconstruct_full_code(original_code: str, fix_snippet: str, language: str = 
     orig_lines = original_code.splitlines()
     fix_lines = fix_snippet.splitlines()
 
-    # Case 1: If original code is small (< 150 lines), and fix_snippet is full code, return fix_snippet
-    if len(orig_lines) < 150 and not has_placeholder(fix_snippet):
-        if len(fix_lines) >= len(orig_lines) * 0.8:
-            return fix_snippet.strip()
-
-    # Case 2: If fix_snippet already has >= 95% of original lines and no placeholders, it's full code
-    if len(fix_lines) >= len(orig_lines) * 0.95 and not has_placeholder(fix_snippet):
-        return fix_snippet.strip()
-
-    # Case 3: Targeted Function Splicing
-    # Extract functions present in the fix_snippet
+    # Step 1: Attempt targeted function splicing first
     cleaned_snippet = clean_placeholders(fix_snippet)
     extracted_funcs = extract_functions_from_code(cleaned_snippet, language=lang)
 
     reconstructed = original_code
     spliced_any = False
+    unmatched_funcs = []
 
     for func_name, func_code in extracted_funcs:
         if lang in ("python", "py"):
@@ -221,12 +214,31 @@ def reconstruct_full_code(original_code: str, fix_snippet: str, language: str = 
         if res:
             reconstructed = res
             spliced_any = True
+        else:
+            unmatched_funcs.append((func_name, func_code))
 
+    # If any function was spliced into a large codebase, append any new helper/main functions and return
     if spliced_any:
+        for _, ucode in unmatched_funcs:
+            reconstructed = reconstructed.rstrip() + "\n\n" + ucode.strip()
         return reconstructed.strip()
 
-    # Case 4: Missing include / import fix
-    # If fix_snippet contains includes/imports not in original_code, prepend or append
+    # Step 2: For small codebases (< 150 lines), if no placeholders exist, the snippet is the intended solution
+    if len(orig_lines) < 150 and not has_placeholder(fix_snippet):
+        return fix_snippet.strip()
+
+    # Step 3: For massive codebases (>= 150 lines e.g. 5,000 lines):
+    # If fix_snippet already has >= 95% of original lines and no placeholders, it's full code
+    if len(fix_lines) >= len(orig_lines) * 0.95 and not has_placeholder(fix_snippet):
+        return fix_snippet.strip()
+
+    # If unmatched functions exist (like a new helper or main), append to the 5,000-line file
+    if unmatched_funcs and not has_placeholder(fix_snippet):
+        for _, ucode in unmatched_funcs:
+            reconstructed = reconstructed.rstrip() + "\n\n" + ucode.strip()
+        return reconstructed.strip()
+
+    # Step 4: Missing include / import fix
     if lang in ("cpp", "c++", "c"):
         includes = re.findall(r'^[ \t]*#include\s*<[^>]+>', fix_snippet, re.MULTILINE)
         missing_includes = [inc for inc in includes if inc not in original_code]
@@ -239,9 +251,8 @@ def reconstruct_full_code(original_code: str, fix_snippet: str, language: str = 
         if missing_imports:
             return "\n".join(missing_imports) + "\n" + original_code
 
-    # Fallback: If fix_snippet has substantial lines (> 80% of original), use fix_snippet
-    if len(fix_lines) >= len(orig_lines) * 0.8:
+    # Fallback for large codebases: If fix has >= 80% of lines, return it; otherwise preserve original
+    if len(fix_lines) >= len(orig_lines) * 0.8 and not has_placeholder(fix_snippet):
         return fix_snippet.strip()
 
-    # Otherwise, return original_code if fix was a tiny fragment that couldn't be mapped
     return original_code

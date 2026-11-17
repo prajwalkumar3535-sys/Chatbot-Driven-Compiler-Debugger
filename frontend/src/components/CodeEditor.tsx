@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
 import type { OnMount } from '@monaco-editor/react';
 import {
@@ -81,6 +81,16 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
       onRun();
     });
   };
+
+  // Keep Monaco editor model in sync with external updates (Apply to Editor, Clear, Reset, File Switch)
+  useEffect(() => {
+    if (editorRef.current && activeFile) {
+      const currentVal = editorRef.current.getValue();
+      if (currentVal !== activeFile.content) {
+        editorRef.current.setValue(activeFile.content);
+      }
+    }
+  }, [activeFile?.content, activeFile?.id]);
 
   const detectLanguageFromFilename = (filename: string): string => {
     const ext = filename.split('.').pop()?.toLowerCase();
@@ -423,6 +433,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
         <div className="flex-1 relative overflow-hidden bg-white dark:bg-dark-bg">
           <Editor
             height="100%"
+            path={activeFile?.id || activeFile?.name || 'main'}
             language={getMonacoLanguage(activeFile?.name || language.filename)}
             value={activeFile?.content || ''}
             theme={theme === 'dark' ? 'vs-dark' : 'light'}

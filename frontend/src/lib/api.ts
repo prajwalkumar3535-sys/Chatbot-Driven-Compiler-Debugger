@@ -67,7 +67,7 @@ export interface StreamChatParams {
   onAgentDone?: (data: { has_code: boolean; extracted_code?: string; is_safe: boolean; security_note?: string }) => void;
   onModelHeader?: (modelName: string, modelTag: string) => void;
   onModelToken?: (model: string, token: string) => void;
-  onModelAudit?: (data: { model: string; is_safe: boolean; note?: string; has_code: boolean }) => void;
+  onModelAudit?: (data: { model: string; is_safe: boolean; note?: string; has_code: boolean; code?: string }) => void;
   onConsensusToken?: (token: string) => void;
   onDone: () => void;
   onError: (err: Error) => void;

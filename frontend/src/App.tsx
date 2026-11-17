@@ -589,7 +589,7 @@ export function App() {
       onModelAudit: (data) => {
         councilResults = councilResults.map((cr) =>
           cr.model_name === data.model
-            ? { ...cr, is_safe: data.is_safe, note: data.note, hasCode: data.has_code }
+            ? { ...cr, is_safe: data.is_safe, note: data.note, hasCode: data.has_code, code: data.code }
             : cr
         );
         setMessages((prev) =>

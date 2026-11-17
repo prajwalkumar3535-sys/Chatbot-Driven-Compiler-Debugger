@@ -316,9 +316,8 @@ export const AgentChat: React.FC<AgentChatProps> = ({
                                     <button
                                       type="button"
                                       onClick={() => {
-                                        const codeToApply = msg.extracted_code || codeString;
+                                        const codeToApply = (msg.extracted_code && msg.extracted_code.trim()) ? msg.extracted_code : codeString;
                                         onApplyCode(codeToApply);
-                                        toast.success('Code applied to editor!');
                                       }}
                                       title="Apply directly to active editor tab"
                                       className="flex items-center space-x-1.5 px-2.5 py-0.5 rounded-md bg-emerald-600 hover:bg-emerald-500 !text-white font-semibold text-[11px] shadow-sm hover:shadow-emerald-500/25 border border-emerald-400/40 transition-all active:scale-95"

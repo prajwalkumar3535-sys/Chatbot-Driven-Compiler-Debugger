@@ -151,7 +151,8 @@ STRICT INSTRUCTIONS:
                         "model": name,
                         "is_safe": is_safe,
                         "note": sec_note,
-                        "has_code": bool(extracted)
+                        "has_code": bool(extracted),
+                        "code": extracted
                     })
                 }
                 await asyncio.sleep(0.05)

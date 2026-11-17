@@ -245,7 +245,7 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
                   {result.stdout && (
                     <div>
                       <div className="text-[10px] text-slate-700 dark:text-slate-400 font-bold uppercase tracking-wider mb-1">Standard Output</div>
-                      <pre className="text-emerald-800 dark:text-emerald-400 font-mono font-medium whitespace-pre-wrap bg-emerald-50 dark:bg-slate-900/40 p-2.5 rounded border border-emerald-300 dark:border-emerald-500/10 leading-relaxed shadow-sm">
+                      <pre className="output-terminal-stdout font-mono font-medium whitespace-pre-wrap p-3 rounded border leading-relaxed shadow-sm">
                         {result.stdout}
                       </pre>
                     </div>
@@ -254,7 +254,7 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
                   {result.stderr && (
                     <div>
                       <div className="text-[10px] text-rose-700 dark:text-rose-400 font-bold uppercase tracking-wider mb-1">Error Stream (stderr)</div>
-                      <pre className="text-rose-800 dark:text-rose-400 font-mono font-medium whitespace-pre-wrap bg-rose-50 dark:bg-rose-950/20 p-2.5 rounded border border-rose-300 dark:border-rose-500/20 leading-relaxed shadow-sm">
+                      <pre className="output-terminal-stderr font-mono font-medium whitespace-pre-wrap p-3 rounded border leading-relaxed shadow-sm">
                         {result.stderr}
                       </pre>
                     </div>
@@ -354,7 +354,7 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
                       <span>Supplied to Multi-Agent LLMs</span>
                     </span>
                   </div>
-                  <pre className="font-mono text-emerald-400 text-xs whitespace-pre bg-[#0b1120] p-3 rounded-lg border border-slate-700 leading-relaxed overflow-x-auto max-h-72 shadow-inner">
+                  <pre className="font-mono text-xs whitespace-pre bg-slate-50 dark:bg-[#0b1120] text-slate-800 dark:text-emerald-400 p-3 rounded-lg border border-slate-300 dark:border-slate-700 leading-relaxed overflow-x-auto max-h-72 shadow-inner">
                     {ast.tree_text}
                   </pre>
                 </div>

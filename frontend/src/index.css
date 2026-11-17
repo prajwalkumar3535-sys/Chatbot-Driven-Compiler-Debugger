@@ -122,19 +122,47 @@
 /* Code blocks inside chat: ensure they ALWAYS have sleek dark background with vibrant readable emerald code in BOTH themes */
 .code-block-container,
 .code-block-container pre,
-pre.chat-code-block,
-pre {
+pre.chat-code-block {
   background-color: #0b1120 !important;
 }
 
 .code-block-container code,
-pre code,
+pre.chat-code-block code,
 code.chat-code-text {
   color: #4ade80 !important; /* Bright emerald-400 */
   background-color: transparent !important;
   background: transparent !important;
   padding: 0 !important;
   border-radius: 0 !important;
+}
+
+/* =====================================================================
+   OUTPUT PANEL TERMINAL STYLES (Clean White in Light Mode, Dark in Dark Mode)
+   ===================================================================== */
+.output-terminal-stdout {
+  background-color: #ffffff !important;
+  color: #0f172a !important; /* Deep dark slate for crisp terminal readability on white */
+  border: 1px solid #cbd5e1 !important;
+}
+
+.dark .output-terminal-stdout,
+[data-theme="dark"] .output-terminal-stdout {
+  background-color: #0b1120 !important;
+  color: #4ade80 !important; /* Bright emerald in dark mode */
+  border: 1px solid #1e293b !important;
+}
+
+.output-terminal-stderr {
+  background-color: #fff1f2 !important;
+  color: #be123c !important;
+  border: 1px solid #fecdd3 !important;
+}
+
+.dark .output-terminal-stderr,
+[data-theme="dark"] .output-terminal-stderr {
+  background-color: #1c0f16 !important;
+  color: #fb7185 !important;
+  border: 1px solid #4c0519 !important;
 }
 
 /* Select dropdowns and options in light theme */
