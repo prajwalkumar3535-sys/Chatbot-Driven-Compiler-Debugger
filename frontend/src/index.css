@@ -111,22 +111,30 @@
   color: #0f172a !important;
 }
 
-/* Markdown inline codes in light mode */
-.light code {
+/* Markdown inline codes in light mode (only inline codes outside of pre) */
+.light :not(pre) > code {
   color: #0f172a !important;
   background-color: #e2e8f0 !important;
+  padding: 0.125rem 0.375rem !important;
+  border-radius: 0.25rem !important;
 }
 
-/* Code blocks inside chat: ensure they always have sleek dark background with vibrant readable code in both themes */
-.code-block-container {
-  background-color: #0b1120 !important;
-  border-color: #1e293b !important;
-}
-
+/* Code blocks inside chat: ensure they ALWAYS have sleek dark background with vibrant readable emerald code in BOTH themes */
+.code-block-container,
 .code-block-container pre,
-.code-block-container code {
+pre.chat-code-block,
+pre {
+  background-color: #0b1120 !important;
+}
+
+.code-block-container code,
+pre code,
+code.chat-code-text {
   color: #4ade80 !important; /* Bright emerald-400 */
   background-color: transparent !important;
+  background: transparent !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
 }
 
 /* Select dropdowns and options in light theme */

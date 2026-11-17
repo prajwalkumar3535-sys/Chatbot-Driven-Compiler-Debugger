@@ -49,7 +49,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const activeSandbox = health?.sandboxes?.[selectedLanguage] || `${selectedLanguage}-sandbox`;
 
   return (
-    <header className="h-14 border-b border-slate-300 dark:border-slate-700 bg-white/95 dark:bg-dark-bg/95 backdrop-blur-md px-4 flex items-center justify-between z-30 select-none shadow-sm transition-colors">
+    <header className="h-14 border-b border-slate-300 dark:border-slate-700 bg-white dark:bg-[#0b0f17] px-4 flex items-center justify-between z-30 select-none shadow-sm transition-colors">
       {/* Brand Logo & Name */}
       <div className="flex items-center space-x-3">
         <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-emerald-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 border border-emerald-400/30">

@@ -9,11 +9,11 @@ export default {
     extend: {
       colors: {
         dark: {
-          bg: 'var(--bg-main)',
-          card: 'var(--bg-card)',
-          panel: 'var(--bg-panel)',
-          border: 'var(--border-color)',
-          hover: 'var(--bg-hover)',
+          bg: '#0b0f17',
+          card: '#111827',
+          panel: '#161b22',
+          border: '#334155',
+          hover: 'rgba(255, 255, 255, 0.05)',
         },
         brand: {
           emerald: '#10b981',

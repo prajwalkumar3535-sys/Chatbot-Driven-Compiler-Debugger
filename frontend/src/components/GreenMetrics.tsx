@@ -42,10 +42,10 @@ export const GreenMetrics: React.FC<GreenMetricsProps> = ({ metrics }) => {
   };
 
   return (
-    <div className="h-16 px-3 bg-slate-100 dark:bg-dark-card/90 border-b border-slate-300 dark:border-dark-border flex items-center justify-between select-none">
+    <div className="h-16 px-3 bg-slate-100 dark:bg-[#111827] border-b border-slate-300 dark:border-slate-700 flex items-center justify-between select-none">
       <div className="grid grid-cols-4 gap-2 flex-1 mr-3">
         {/* Metric 1: Latency */}
-        <div className="flex items-center space-x-2 bg-white dark:bg-dark-bg/60 px-2.5 py-1.5 rounded-md border border-slate-300 dark:border-dark-border/70 shadow-sm">
+        <div className="flex items-center space-x-2 bg-white dark:bg-[#0b0f17] px-2.5 py-1.5 rounded-md border border-slate-300 dark:border-slate-700 shadow-sm">
           <div className="p-1 rounded bg-blue-500/15 text-blue-600 dark:text-blue-400">
             <Timer className="w-3.5 h-3.5" />
           </div>
@@ -60,7 +60,7 @@ export const GreenMetrics: React.FC<GreenMetricsProps> = ({ metrics }) => {
         </div>
 
         {/* Metric 2: Memory */}
-        <div className="flex items-center space-x-2 bg-white dark:bg-dark-bg/60 px-2.5 py-1.5 rounded-md border border-slate-300 dark:border-dark-border/70 shadow-sm">
+        <div className="flex items-center space-x-2 bg-white dark:bg-[#0b0f17] px-2.5 py-1.5 rounded-md border border-slate-300 dark:border-slate-700 shadow-sm">
           <div className="p-1 rounded bg-purple-500/15 text-purple-600 dark:text-purple-400">
             <HardDrive className="w-3.5 h-3.5" />
           </div>
@@ -75,7 +75,7 @@ export const GreenMetrics: React.FC<GreenMetricsProps> = ({ metrics }) => {
         </div>
 
         {/* Metric 3: Energy (Full Un-truncated Wh) */}
-        <div className="flex items-center space-x-2 bg-white dark:bg-dark-bg/60 px-2.5 py-1.5 rounded-md border border-slate-300 dark:border-dark-border/70 shadow-sm">
+        <div className="flex items-center space-x-2 bg-white dark:bg-[#0b0f17] px-2.5 py-1.5 rounded-md border border-slate-300 dark:border-slate-700 shadow-sm">
           <div className="p-1 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400">
             <Zap className="w-3.5 h-3.5" />
           </div>
@@ -93,7 +93,7 @@ export const GreenMetrics: React.FC<GreenMetricsProps> = ({ metrics }) => {
         </div>
 
         {/* Metric 4: Carbon Emitted (Full Un-truncated Grams) */}
-        <div className="flex items-center space-x-2 bg-white dark:bg-dark-bg/60 px-2.5 py-1.5 rounded-md border border-slate-300 dark:border-dark-border/70 shadow-sm">
+        <div className="flex items-center space-x-2 bg-white dark:bg-[#0b0f17] px-2.5 py-1.5 rounded-md border border-slate-300 dark:border-slate-700 shadow-sm">
           <div className="p-1 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
             <Globe2 className="w-3.5 h-3.5" />
           </div>

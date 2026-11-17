@@ -191,7 +191,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
   };
 
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-dark-bg border-r border-slate-300 dark:border-dark-border select-none">
+    <div className="h-full flex flex-col bg-white dark:bg-[#0b0f17] border-r border-slate-300 dark:border-slate-700 select-none">
       {/* Hidden File Inputs for PC Access */}
       <input
         ref={fileInputRef}
@@ -211,7 +211,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
       />
 
       {/* Top File Tab Header with Tab Management */}
-      <div className="h-10 px-2 bg-slate-100 dark:bg-dark-card/60 border-b border-slate-300 dark:border-dark-border flex items-center justify-between text-xs">
+      <div className="h-10 px-2 bg-slate-100 dark:bg-[#111827] border-b border-slate-300 dark:border-slate-700 flex items-center justify-between text-xs">
         {/* Left: Tab List & Add Tab */}
         <div className="flex items-center space-x-1 overflow-x-auto max-w-[65%] py-1">
           {files.map((file) => {
@@ -224,8 +224,8 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
                 onClick={() => onSelectFile(file.id)}
                 className={`group flex items-center space-x-1.5 px-3 py-1.5 rounded-t font-mono text-[11px] cursor-pointer transition-all border-b-2 shrink-0 ${
                   isActive
-                    ? 'bg-white dark:bg-dark-bg border-emerald-600 dark:border-emerald-500 text-slate-900 dark:text-slate-100 font-bold shadow-sm'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/70 dark:hover:bg-dark-hover border-transparent'
+                    ? 'bg-white dark:bg-[#0b0f17] border-emerald-600 dark:border-emerald-500 text-slate-900 dark:text-slate-100 font-bold shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/70 dark:hover:bg-slate-800 border-transparent'
                 }`}
               >
                 <FileCode2 className={`w-3.5 h-3.5 ${isActive ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'}`} />
@@ -447,7 +447,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
       </div>
 
       {/* Editor Action Bottom Bar */}
-      <div className="h-13 px-4 py-2 bg-slate-100 dark:bg-dark-card/90 border-t border-slate-300 dark:border-dark-border flex items-center justify-between">
+      <div className="h-13 px-4 py-2 bg-slate-100 dark:bg-[#111827] border-t border-slate-300 dark:border-slate-700 flex items-center justify-between">
         <div className="flex items-center space-x-2 text-xs text-slate-600 dark:text-slate-400">
           <button
             onClick={onClear}

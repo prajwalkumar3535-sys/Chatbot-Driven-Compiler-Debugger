@@ -96,9 +96,9 @@ export const AgentChat: React.FC<AgentChatProps> = ({
   ];
 
   return (
-    <div className="flex-1 flex flex-col bg-white dark:bg-dark-bg select-none min-h-0">
+    <div className="flex-1 flex flex-col bg-white dark:bg-[#0b0f17] select-none min-h-0">
       {/* Top Header: Agent Segmented Control */}
-      <div className="h-12 px-3 bg-slate-100 dark:bg-dark-card/60 border-b border-slate-300 dark:border-dark-border flex items-center justify-between shrink-0">
+      <div className="h-12 px-3 bg-slate-100 dark:bg-[#111827] border-b border-slate-300 dark:border-slate-700 flex items-center justify-between shrink-0">
         {platformMode === 'council' ? (
           <div className="flex items-center space-x-2 text-xs font-semibold text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-3 py-1.5 rounded-md border border-indigo-200 dark:border-indigo-500/20 w-full justify-between shadow-sm">
             <div className="flex items-center space-x-2">
@@ -297,8 +297,8 @@ export const AgentChat: React.FC<AgentChatProps> = ({
                           if (!inline && (match || isMultiLine)) {
                             const lang = match ? match[1].toUpperCase() : activeLanguage.toUpperCase();
                             return (
-                              <div className="my-2.5 rounded-lg overflow-hidden border border-slate-700 dark:border-slate-800 bg-[#0b1120] shadow-md">
-                                <div className="h-8 px-3 bg-[#111827] border-b border-slate-750 flex items-center justify-between text-[11px] text-slate-300 font-mono">
+                              <div className="code-block-container my-2.5 rounded-lg overflow-hidden border border-slate-700 bg-[#0b1120] shadow-md">
+                                <div className="h-8 px-3 bg-[#111827] border-b border-slate-700 flex items-center justify-between text-[11px] font-mono">
                                   <span className="font-bold text-emerald-400 tracking-wide">{lang}</span>
                                   <div className="flex items-center space-x-2">
                                     <button
@@ -308,10 +308,10 @@ export const AgentChat: React.FC<AgentChatProps> = ({
                                         toast.success('Code block copied!');
                                       }}
                                       title="Copy code"
-                                      className="flex items-center space-x-1 px-2 py-0.5 rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors text-[11px]"
+                                      className="flex items-center space-x-1 px-2 py-0.5 rounded hover:bg-slate-700 !text-slate-300 hover:!text-white transition-colors text-[11px]"
                                     >
-                                      <Copy className="w-3 h-3" />
-                                      <span>Copy</span>
+                                      <Copy className="w-3 h-3 !text-slate-300" />
+                                      <span className="!text-slate-300">Copy</span>
                                     </button>
                                     <button
                                       type="button"
@@ -320,15 +320,15 @@ export const AgentChat: React.FC<AgentChatProps> = ({
                                         toast.success('Code applied to editor!');
                                       }}
                                       title="Apply directly to active editor tab"
-                                      className="flex items-center space-x-1.5 px-2.5 py-0.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-[11px] shadow-sm hover:shadow-emerald-500/25 border border-emerald-400/40 transition-all active:scale-95"
+                                      className="flex items-center space-x-1.5 px-2.5 py-0.5 rounded-md bg-emerald-600 hover:bg-emerald-500 !text-white font-semibold text-[11px] shadow-sm hover:shadow-emerald-500/25 border border-emerald-400/40 transition-all active:scale-95"
                                     >
-                                      <ArrowRight className="w-3 h-3 text-white" />
-                                      <span>Apply to Editor</span>
+                                      <ArrowRight className="w-3 h-3 !text-white" />
+                                      <span className="!text-white">Apply to Editor</span>
                                     </button>
                                   </div>
                                 </div>
-                                <pre className="p-3 text-[12px] font-mono overflow-x-auto text-emerald-400 bg-[#0b1120] leading-relaxed font-medium">
-                                  <code>{children}</code>
+                                <pre className="chat-code-block p-3 text-[12px] font-mono overflow-x-auto !text-emerald-400 !bg-[#0b1120] leading-relaxed font-medium">
+                                  <code className="chat-code-text !text-emerald-400 !bg-transparent">{children}</code>
                                 </pre>
                               </div>
                             );
@@ -379,7 +379,7 @@ export const AgentChat: React.FC<AgentChatProps> = ({
       </div>
 
       {/* Input Box Area */}
-      <div className="p-3 bg-slate-100 dark:bg-dark-card/90 border-t border-slate-300 dark:border-dark-border shrink-0 select-none">
+      <div className="p-3 bg-slate-100 dark:bg-[#111827] border-t border-slate-300 dark:border-slate-700 shrink-0 select-none">
         <form onSubmit={handleSubmit} className="flex flex-col space-y-2">
           {/* Quick chips below input */}
           <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 text-[11px]">
