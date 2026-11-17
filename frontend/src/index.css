@@ -9,14 +9,14 @@
   --bg-card: #111827;
   --bg-panel: #161b22;
   --bg-hover: rgba(255, 255, 255, 0.05);
-  --border-color: rgba(255, 255, 255, 0.08);
+  --border-color: #334155;
   --text-main: #f8fafc;
   --text-muted: #94a3b8;
   --text-subtle: #64748b;
   --code-bg: #070a0f;
   --code-color: #6ee7b7;
   --chat-bubble-bg: #111827;
-  --chat-bubble-border: rgba(255, 255, 255, 0.08);
+  --chat-bubble-border: #334155;
   --chat-bubble-text: #e2e8f0;
 }
 
@@ -25,14 +25,14 @@
   --bg-card: #f8fafc;
   --bg-panel: #f1f5f9;
   --bg-hover: rgba(0, 0, 0, 0.05);
-  --border-color: rgba(0, 0, 0, 0.12);
+  --border-color: #cbd5e1;
   --text-main: #0f172a;
   --text-muted: #334155;
   --text-subtle: #64748b;
   --code-bg: #0f172a;
   --code-color: #34d399;
   --chat-bubble-bg: #f8fafc;
-  --chat-bubble-border: rgba(0, 0, 0, 0.12);
+  --chat-bubble-border: #cbd5e1;
   --chat-bubble-text: #0f172a;
   color-scheme: light;
 }
@@ -198,4 +198,20 @@
   background-color: #e2e8f0 !important;
   color: #1e293b !important;
   border: 1px solid #cbd5e1 !important;
+}
+
+/* High-visibility, crisp border styling for panels, tabs and dividers */
+.light .border-slate-300,
+.light .border-slate-200 {
+  border-color: #cbd5e1 !important;
+}
+
+.light .border-dark-border {
+  border-color: #cbd5e1 !important;
+}
+
+.dark .border-slate-300,
+.dark .border-slate-200,
+.dark .border-dark-border {
+  border-color: #334155 !important;
 }

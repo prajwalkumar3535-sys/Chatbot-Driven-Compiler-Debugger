@@ -103,7 +103,7 @@ async def stream_chat(req: ChatStreamRequest):
 Language: {lang.upper()}
 
 Original Source Code:
-```{lang}
+```{lang_tag}
 {code}
 ```
 
@@ -114,10 +114,18 @@ Compiler / Runtime Output:
 
 User Query: {user_query}
 
-TASK:
-1. Use the provided Abstract Syntax Tree (AST) to pinpoint the exact failure point.
-2. Provide your concise diagnosis and suggested fix.
-3. Enclose complete, working, compile-ready code in ```{lang_tag} ... ``` code block."""
+STRICT INSTRUCTIONS:
+- Be direct and concise. NO conversational filler, greetings, or sign-offs (no 'Hello', 'Certainly', 'Sure').
+- Only state the necessary root cause and solution.
+- Provide complete, working, compile-ready fixed code enclosed in ```{lang_tag} ... ``` code block so the user can apply it directly to the editor.
+
+### DIAGNOSIS
+- Cause: <concise root cause>
+
+### FIXED CODE
+```{lang_tag}
+<complete corrected code>
+```"""
 
                 model_text = []
                 async for token in stream_ollama_response(council_prompt, model=mod, temperature=0.2):
@@ -231,11 +239,11 @@ Summarize the consensus root cause based on the AST, select the safest fix, and 
 # =====================================================================
 
 def _build_detective_prompt(lang: str, code: str, error: str, query: str, ast_block: str) -> str:
+    lang_tag = "python" if lang in ("python", "py") else ("java" if lang == "java" else "cpp")
     category, strategy = classify_error(error, language=lang)
-    return f"""You are the Diagnostic Detective Agent in a multi-agent compiler platform.
+    return f"""You are the Detective Agent.
 Language: {lang.upper()}
-Error Category: {category}
-Teaching Strategy: {strategy}
+Category: {category}
 
 --- SOURCE CODE ---
 {code}
@@ -247,23 +255,27 @@ Teaching Strategy: {strategy}
 
 User Question: {query}
 
-TASK:
-1. Use the Abstract Syntax Tree (AST) above to pinpoint the exact failure line and scope.
-2. If the parser flagged a syntax error in the AST, explain the exact token or delimiter issue immediately.
-3. Formulate a crisp, technical diagnosis for the student.
+STRICT INSTRUCTIONS:
+- Be direct, technical, and concise.
+- NO conversational filler, greetings, or pleasantries (no 'Hello', 'Certainly', 'Sure').
+- Only state the exact failure point and the root cause.
+- If providing or suggesting fixed code, enclose complete working code in ```{lang_tag} ... ``` code block.
 
-Format as:
 ### FAULT LOCALIZATION
-- Line / Scope: <line number or function/block from AST>
+- Line / Scope: <line number or function from AST>
 - Root Cause: <one sentence technical cause>
 
-### TECHNICAL DIAGNOSIS
-<2-3 concise bullet points explaining why the code failed>"""
+### DIAGNOSIS
+<2-3 concise bullet points explaining why the code failed>
+
+```{lang_tag}
+<complete corrected code if fix is suggested>
+```"""
 
 
 def _build_repair_prompt(lang: str, code: str, error: str, query: str, ast_block: str) -> str:
     lang_tag = "python" if lang in ("python", "py") else ("java" if lang == "java" else "cpp")
-    return f"""You are the Repair Agent in a multi-agent program repair platform.
+    return f"""You are the Repair Agent.
 Language: {lang.upper()}
 
 --- BUGGY CODE ---
@@ -276,23 +288,24 @@ Language: {lang.upper()}
 
 User Request: {query}
 
-TASK:
-Fix all compilation and runtime errors using the AST context to preserve defined functions, classes, and scopes.
-DO NOT introduce any dangerous functions (system, popen, gets, strcpy, unsafe pointers, command injections).
-Output the COMPLETE working code enclosed in ```{lang_tag} ... ``` code fences.
+STRICT INSTRUCTIONS:
+- Be concise and direct. Do NOT write conversational filler, greetings, or apologies.
+- Only state the needy information: what was broken and the fix.
+- Output the COMPLETE working code enclosed in ```{lang_tag} ... ``` markdown fences so it renders in the code box with the Apply to Editor button.
 
-### REPAIR SUMMARY
-(Brief 1-line note of what was changed)
+### SUMMARY OF FIX
+- <1-2 bullet points explaining what was fixed>
 
 ### FIXED CODE
 ```{lang_tag}
-(Complete corrected code here)
+<complete corrected compilable code here>
 ```"""
 
 
 def _build_security_prompt(lang: str, code: str, error: str, query: str, ast_block: str) -> str:
+    lang_tag = "python" if lang in ("python", "py") else ("java" if lang == "java" else "cpp")
     return f"""You are the Security Sentinel Agent.
-Enforces 13-layer defense checking memory vulnerabilities, buffer overflows, process injection, format string bugs, and dangerous APIs.
+Enforces 13-layer defense against memory vulnerabilities, buffer overflows, process injections, and dangerous APIs.
 Language: {lang.upper()}
 
 --- SOURCE CODE ---
@@ -305,35 +318,52 @@ Language: {lang.upper()}
 
 User Query: {query}
 
-TASK:
-Perform static security audit using the AST call expressions and symbols. Flag any CWE-119, CWE-78, buffer overflows, or unsanitized system calls.
-Give a clear PASS / FAIL verdict with recommendations."""
+STRICT INSTRUCTIONS:
+- Be direct, factual, and concise. NO conversational filler.
+- State whether the code is PASS, WARNING, or BLOCKED.
+- If vulnerabilities exist, provide the secured code enclosed in ```{lang_tag} ... ``` code block.
+
+### SECURITY VERDICT
+- Status: <PASS / WARNING / BLOCKED>
+- Risk Analysis: <1-2 concise bullet points>
+
+```{lang_tag}
+<secure corrected code if remediation is needed>
+```"""
 
 
 def _build_tutor_prompt(lang: str, code: str, error: str, query: str, history: List[ChatMessage], ast_block: str) -> str:
+    lang_tag = "python" if lang in ("python", "py") else ("java" if lang == "java" else "cpp")
     history_context = ""
     if len(history) > 1:
         history_context = "\nRecent Conversation:\n" + "\n".join(f"{m.role}: {m.content}" for m in history[-3:])
 
-    return f"""You are the friendly Pedagogical Tutor Mentor in a programming education platform.
+    return f"""You are the Tutor Mentor.
 Language: {lang.upper()}
 
 --- CURRENT CODE ---
-```{lang}
+```{lang_tag}
 {code}
 ```
 
---- OUTPUT / ERROR (if any) ---
+--- OUTPUT / ERROR ---
 {error}
 
 {ast_block}
 {history_context}
 
-User's Latest Question: {query}
+User Question: {query}
 
-TASK:
-Explain concepts clearly and encouragingly:
-1. 💡 Conceptual Explanation: Explain why the compiler/runtime complained using the AST hierarchy.
-2. 🔑 Core Invariant / Best Practice: What rule should the student remember?
-3. ⚡ Complexity & Performance: Mention runtime or space complexity if applicable.
-Keep it student-friendly and concise."""
+STRICT INSTRUCTIONS:
+- Be direct, concise, and focused. Only explain the necessary concepts without conversational filler (no 'Hello', 'Certainly', 'Sure!', 'Let us take a look').
+- Only explain the needy things: why the code failed and the invariant to remember.
+- ALWAYS enclose the complete corrected code in a ```{lang_tag} ... ``` markdown code block so the student can apply it to the editor with one click.
+
+### EXPLANATION
+- 💡 Root Cause: <concise explanation of the error using AST context>
+- 🔑 Core Invariant: <the rule or best practice to remember>
+
+### FIXED CODE
+```{lang_tag}
+<complete corrected working code>
+```"""

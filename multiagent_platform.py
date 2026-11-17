@@ -275,10 +275,9 @@ class DiagnosticAgent(BaseAgent):
         t0 = time.time()
         category, strategy = classify_error(error, language=language)
         
-        prompt = f"""You are the Diagnostic Agent in a secure multi-agent compiler platform.
+        prompt = f"""You are the Diagnostic Detective Agent.
 Language: {language.upper()}
 Error Category: {category}
-Teaching Strategy: {strategy}
 
 --- SOURCE CODE ---
 {code}
@@ -286,12 +285,11 @@ Teaching Strategy: {strategy}
 --- COMPILER / RUNTIME OUTPUT ---
 {error}
 
-TASK:
-1. Identify the exact line number(s) and syntax/semantic cause of each failure.
-2. Formulate a crisp, technical diagnosis for the Repair Agent.
-3. Keep it concise, structured, and free of conversational filler.
+STRICT INSTRUCTIONS:
+- Be direct, technical, and concise.
+- NO conversational filler, greetings, or apologies (no 'Hello', 'Certainly', 'Sure').
+- Only state the necessary root cause, line number, and fix.
 
-Format as:
 ### FAULT LOCALIZATION
 - Line / Construct: <line number or function>
 - Root Cause: <one sentence description>
@@ -343,7 +341,7 @@ Your previous fix was REJECTED: {critique}
 You MUST address this flaw and make the code 100% secure and compilable.
 """
 
-        prompt = f"""You are the Repair Agent in a multi-agent program repair platform.
+        prompt = f"""You are the Repair Agent.
 Language: {language.upper()}
 
 --- BUGGY CODE ---
@@ -355,14 +353,13 @@ Language: {language.upper()}
 --- DIAGNOSTIC AGENT REPORT ---
 {diagnosis}
 {critique_block}
-TASK:
-Fix all compilation and runtime errors.
-Preserve the user's original logic, variable naming, and style.
-DO NOT introduce any dangerous functions (system, popen, gets, strcpy, unsafe pointers, command injections).
-Output the COMPLETE working code enclosed in ```{lang_tag} ... ``` code fences.
+STRICT INSTRUCTIONS:
+- Be concise and direct. Do NOT write conversational filler or pleasantries.
+- Only state the needy information: what was broken and the fix.
+- Output the COMPLETE working code enclosed in ```{lang_tag} ... ``` markdown fences so it renders with the Apply to Editor button.
 
-### REPAIR SUMMARY
-(Brief 1-line note of what was changed)
+### SUMMARY OF FIX
+- <1-2 bullet points explaining what was fixed>
 
 ### FIXED CODE
 ```{lang_tag}
@@ -464,7 +461,8 @@ class TutorAgent(BaseAgent):
         model_override: Optional[str] = None
     ) -> AgentMessage:
         t0 = time.time()
-        prompt = f"""You are the Tutor Agent in an educational programming platform.
+        lang_tag = "python" if language.lower() in ("python", "py") else ("java" if language.lower() == "java" else "cpp")
+        prompt = f"""You are the Tutor Mentor.
 Language: {language.upper()}
 
 --- ORIGINAL BUGGY CODE ---
@@ -476,12 +474,19 @@ Language: {language.upper()}
 --- VERIFIED FIX ---
 {fixed_code or 'See above'}
 
-TASK:
-Provide an encouraging, clear pedagogical lesson for a computer science student:
-1. 💡 Conceptual Explanation: Explain *why* the compiler complained in intuitive terms.
-2. 🔑 Key Rule / Best Practice: What core language invariant must the student remember?
-3. ⚡ Complexity & Performance: Mention if the fix affects runtime or memory.
-Keep it concise, friendly, and structured."""
+STRICT INSTRUCTIONS:
+- Be direct, concise, and focused. Only explain the necessary concepts without conversational filler (no 'Hello', 'Certainly', 'Sure').
+- Only explain the needy things: why the code failed and the invariant to remember.
+- ALWAYS enclose the complete corrected code in a ```{lang_tag} ... ``` markdown code block so the student can apply it to the editor with one click.
+
+### EXPLANATION
+- 💡 Root Cause: <concise explanation of why the compiler or runtime failed>
+- 🔑 Core Invariant: <the rule or best practice to remember>
+
+### FIXED CODE
+```{lang_tag}
+{fixed_code or '(Complete corrected working code here)'}
+```"""
 
         response = self.call_model(prompt, model_override=model_override, temperature=0.3)
         latency = round(time.time() - t0, 3)

@@ -371,7 +371,8 @@ export function App() {
     const effectiveLang = lang || selectedLanguage || 'cpp';
     const ext = effectiveLang === 'python' ? '.py' : effectiveLang === 'java' ? '.java' : '.cpp';
     const defaultName = name || `tab${files.length + 1}${ext}`;
-    const defaultContent = content ?? (languages.find((l) => l.id === effectiveLang)?.template || '');
+    // Plain empty tab unless explicit content is provided
+    const defaultContent = content !== undefined ? content : '';
 
     const newFile: EditorFile = {
       id: `tab-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -685,8 +686,8 @@ export function App() {
             />
           </Panel>
 
-          <Separator className="w-1.5 bg-dark-bg hover:bg-indigo-500/50 transition-colors cursor-col-resize flex items-center justify-center">
-            <div className="h-8 w-0.5 bg-slate-700 rounded-full" />
+          <Separator className="w-2 bg-slate-200 dark:bg-slate-800 hover:bg-indigo-500/60 border-l border-r border-slate-300 dark:border-slate-700 transition-colors cursor-col-resize flex items-center justify-center">
+            <div className="h-8 w-0.5 bg-slate-500 dark:bg-slate-400 rounded-full" />
           </Separator>
 
           {/* Right Region: Output Panel & Multi-Agent AI Chat (45%) */}
@@ -703,8 +704,8 @@ export function App() {
                 />
               </Panel>
 
-              <Separator className="h-1.5 bg-dark-bg hover:bg-indigo-500/50 transition-colors cursor-row-resize flex items-center justify-center">
-                <div className="w-8 h-0.5 bg-slate-700 rounded-full" />
+              <Separator className="h-2 bg-slate-200 dark:bg-slate-800 hover:bg-indigo-500/60 border-t border-b border-slate-300 dark:border-slate-700 transition-colors cursor-row-resize flex items-center justify-center">
+                <div className="w-8 h-0.5 bg-slate-500 dark:bg-slate-400 rounded-full" />
               </Separator>
 
               {/* Right Bottom: Multi-Agent AI Chat */}
