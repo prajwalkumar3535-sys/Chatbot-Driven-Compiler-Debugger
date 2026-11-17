@@ -106,12 +106,14 @@ async def stream_ollama_response(
     prompt: str,
     model: str,
     temperature: float = 0.2,
-    num_predict: int = 500,
-    timeout: float = 120.0
+    num_predict: int = 8192,
+    num_ctx: Optional[int] = None,
+    timeout: float = 300.0
 ) -> AsyncGenerator[str, None]:
     """
     Streams generated tokens from Ollama API using chunked HTTP transfer.
-    Automatically resolves model tags to installed local models and handles fallbacks.
+    Automatically scales context window (num_ctx up to 32k) to support massive
+    5,000+ line codebases and eliminates arbitrary 500-token cutoff.
     """
     is_online = check_ollama_health()
     if not is_online:
@@ -124,13 +126,21 @@ async def stream_ollama_response(
     # Automatically resolve model to best installed candidate
     active_model = resolve_best_model(model)
 
+    # Dynamic context window scaling: ensures 5,000+ line codebases fit comfortably
+    prompt_len = len(prompt)
+    calculated_ctx = max(8192, min(prompt_len // 2 + 4096, 32768))
+    active_ctx = num_ctx or calculated_ctx
+
     payload = {
         "model": active_model,
         "prompt": prompt,
         "stream": True,
         "options": {
             "temperature": temperature,
-            "num_predict": num_predict
+            "num_predict": num_predict,
+            "num_ctx": active_ctx,
+            "top_k": 40,
+            "top_p": 0.9
         }
     }
 

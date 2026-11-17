@@ -99,12 +99,13 @@ async def stream_chat(req: ChatStreamRequest):
                 }
 
                 lang_tag = "python" if lang in ("python", "py") else ("java" if lang == "java" else "cpp")
+                formatted_council_code = _format_code_for_prompt(code, error)
                 council_prompt = f"""You are participating in the Multi-Model Program Repair Council.
 Language: {lang.upper()}
 
 Original Source Code:
 ```{lang_tag}
-{code}
+{formatted_council_code}
 ```
 
 Compiler / Runtime Output:
@@ -136,7 +137,7 @@ STRICT INSTRUCTIONS:
                     }
 
                 full_text = "".join(model_text)
-                is_safe, extracted, sec_note = validate_ai_fix(full_text, language=lang)
+                is_safe, extracted, sec_note = validate_ai_fix(full_text, language=lang, original_code=code)
                 collected_proposals[name] = {
                     "text": full_text,
                     "code": extracted,
@@ -216,9 +217,9 @@ Summarize the consensus root cause based on the AST, select the safest fix, and 
                 "data": json.dumps({"token": token, "agent": agent_id})
             }
 
-        # Check for generated code block if Repair or Tutor
+        # Check for generated code block and reconstruct full 5,000+ line code if applicable
         complete_text = "".join(full_response)
-        is_safe, extracted_code, sec_note = validate_ai_fix(complete_text, language=lang)
+        is_safe, extracted_code, sec_note = validate_ai_fix(complete_text, language=lang, original_code=code)
 
         yield {
             "event": "agent_done",
@@ -235,18 +236,47 @@ Summarize the consensus root cause based on the AST, select the safest fix, and 
 
 
 # =====================================================================
-# AGENT PROMPT BUILDERS (WITH AST INJECTION)
+# AGENT PROMPT BUILDERS (WITH AST INJECTION & 5000+ LINE SPLICER)
 # =====================================================================
+
+def _format_code_for_prompt(code: str, error: str) -> str:
+    total_lines = len(code.splitlines())
+    if total_lines <= 250:
+        return code
+
+    lines = code.splitlines()
+    err_line_match = re.search(r'(?:line\s+|:\s*)(\d+)(?::|\s|,|$)', error, re.IGNORECASE)
+    if err_line_match:
+        try:
+            target_line = int(err_line_match.group(1))
+            start_line = max(0, target_line - 35)
+            end_line = min(len(lines), target_line + 35)
+            window = "\n".join(lines[start_line:end_line])
+            return f"""// [NOTE: Massive codebase ({total_lines} total lines). Showing lines {start_line+1} to {end_line} around the failure point:]
+{window}
+// [The AST Splicer will automatically merge your fixed function/block into the complete {total_lines}-line codebase]"""
+        except Exception:
+            pass
+
+    return f"""// [NOTE: Massive codebase ({total_lines} total lines). Showing head and tail:]
+{"\n".join(lines[:100])}
+// ... [{total_lines - 150} lines omitted for focus - AST Splicer will reconstruct full file] ...
+{"\n".join(lines[-50:])}"""
+
 
 def _build_detective_prompt(lang: str, code: str, error: str, query: str, ast_block: str) -> str:
     lang_tag = "python" if lang in ("python", "py") else ("java" if lang == "java" else "cpp")
     category, strategy = classify_error(error, language=lang)
+    formatted_code = _format_code_for_prompt(code, error)
+    total_lines = len(code.splitlines())
+    large_note = f"\n- Large codebase detected ({total_lines} lines). Output the corrected function/scope in ```{lang_tag} ... ```; AST Splicer will merge it into the full file." if total_lines > 250 else ""
+
     return f"""You are the Detective Agent.
 Language: {lang.upper()}
 Category: {category}
 
 --- SOURCE CODE ---
-{code}
+{formatted_code}
 
 --- COMPILER / RUNTIME OUTPUT ---
 {error}
@@ -258,7 +288,7 @@ User Question: {query}
 STRICT INSTRUCTIONS:
 - Be direct, technical, and concise.
 - NO conversational filler, greetings, or pleasantries (no 'Hello', 'Certainly', 'Sure').
-- Only state the exact failure point and the root cause.
+- Only state the exact failure point and the root cause.{large_note}
 - If providing or suggesting fixed code, enclose complete working code in ```{lang_tag} ... ``` code block.
 
 ### FAULT LOCALIZATION
@@ -275,11 +305,15 @@ STRICT INSTRUCTIONS:
 
 def _build_repair_prompt(lang: str, code: str, error: str, query: str, ast_block: str) -> str:
     lang_tag = "python" if lang in ("python", "py") else ("java" if lang == "java" else "cpp")
+    formatted_code = _format_code_for_prompt(code, error)
+    total_lines = len(code.splitlines())
+    large_note = f"\n- Large codebase detected ({total_lines} lines). Output the complete corrected function/scope in ```{lang_tag} ... ```; AST Splicer will merge it into the full {total_lines}-line file." if total_lines > 250 else ""
+
     return f"""You are the Repair Agent.
 Language: {lang.upper()}
 
 --- BUGGY CODE ---
-{code}
+{formatted_code}
 
 --- COMPILER / RUNTIME ERROR ---
 {error}
@@ -290,7 +324,7 @@ User Request: {query}
 
 STRICT INSTRUCTIONS:
 - Be concise and direct. Do NOT write conversational filler, greetings, or apologies.
-- Only state the needy information: what was broken and the fix.
+- Only state the needy information: what was broken and the fix.{large_note}
 - Output the COMPLETE working code enclosed in ```{lang_tag} ... ``` markdown fences so it renders in the code box with the Apply to Editor button.
 
 ### SUMMARY OF FIX
@@ -304,12 +338,13 @@ STRICT INSTRUCTIONS:
 
 def _build_security_prompt(lang: str, code: str, error: str, query: str, ast_block: str) -> str:
     lang_tag = "python" if lang in ("python", "py") else ("java" if lang == "java" else "cpp")
+    formatted_code = _format_code_for_prompt(code, error)
     return f"""You are the Security Sentinel Agent.
 Enforces 13-layer defense against memory vulnerabilities, buffer overflows, process injections, and dangerous APIs.
 Language: {lang.upper()}
 
 --- SOURCE CODE ---
-{code}
+{formatted_code}
 
 --- COMPILER / RUNTIME CONTEXT ---
 {error}
@@ -334,6 +369,10 @@ STRICT INSTRUCTIONS:
 
 def _build_tutor_prompt(lang: str, code: str, error: str, query: str, history: List[ChatMessage], ast_block: str) -> str:
     lang_tag = "python" if lang in ("python", "py") else ("java" if lang == "java" else "cpp")
+    formatted_code = _format_code_for_prompt(code, error)
+    total_lines = len(code.splitlines())
+    large_note = f"\n- Large codebase ({total_lines} lines). Enclose the fixed function/block in ```{lang_tag} ... ```; AST Splicer will merge it into the full file." if total_lines > 250 else ""
+
     history_context = ""
     if len(history) > 1:
         history_context = "\nRecent Conversation:\n" + "\n".join(f"{m.role}: {m.content}" for m in history[-3:])
@@ -343,7 +382,7 @@ Language: {lang.upper()}
 
 --- CURRENT CODE ---
 ```{lang_tag}
-{code}
+{formatted_code}
 ```
 
 --- OUTPUT / ERROR ---
@@ -356,7 +395,7 @@ User Question: {query}
 
 STRICT INSTRUCTIONS:
 - Be direct, concise, and focused. Only explain the necessary concepts without conversational filler (no 'Hello', 'Certainly', 'Sure!', 'Let us take a look').
-- Only explain the needy things: why the code failed and the invariant to remember.
+- Only explain the needy things: why the code failed and the invariant to remember.{large_note}
 - ALWAYS enclose the complete corrected code in a ```{lang_tag} ... ``` markdown code block so the student can apply it to the editor with one click.
 
 ### EXPLANATION

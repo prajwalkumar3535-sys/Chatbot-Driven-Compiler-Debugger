@@ -176,12 +176,15 @@ def resolve_model_alias(model_tag: str) -> str:
 
     return tag_clean
 
-def query_ollama(prompt: str, model_tag: str, temperature: float = 0.2, num_predict: int = 500, stream: bool = False, timeout: int = 60) -> Any:
-    """Direct query to Ollama endpoint with fallback warning if offline."""
+def query_ollama(prompt: str, model_tag: str, temperature: float = 0.2, num_predict: int = 8192, stream: bool = False, timeout: int = 180) -> Any:
+    """Direct query to Ollama endpoint with dynamic context scaling for 5000+ line codebases."""
     if not is_ollama_online():
         raise ConnectionError(
             f"Ollama is offline. Start it with 'ollama serve' and ensure model '{model_tag}' is available."
         )
+
+    prompt_len = len(prompt)
+    ctx_size = max(8192, min(prompt_len // 2 + 4096, 32768))
 
     payload = {
         "model": model_tag,
@@ -189,7 +192,10 @@ def query_ollama(prompt: str, model_tag: str, temperature: float = 0.2, num_pred
         "stream": stream,
         "options": {
             "temperature": temperature,
-            "num_predict": num_predict
+            "num_predict": num_predict,
+            "num_ctx": ctx_size,
+            "top_k": 40,
+            "top_p": 0.9
         }
     }
     r = requests.post(OLLAMA_GEN_URL, json=payload, stream=stream, timeout=(5, timeout))
