@@ -289,9 +289,16 @@ def _analyze_cpp_ast(code: str) -> Dict[str, Any]:
                 if "fatal error: '" not in err_text:
                     syntax_valid = False
                     first_err = err_text.splitlines()[0] if err_text else "Syntax violation in C++ source"
+                    line_no = 1
+                    col_no = 1
+                    m = re.search(r'(?:<stdin>|[^\s:]+[\/\\]?[\w.-]+):(\d+):(?:(\d+):)?\s*(?:fatal )?(?:error|warning):', err_text)
+                    if m:
+                        line_no = int(m.group(1))
+                        if m.group(2):
+                            col_no = int(m.group(2))
                     syntax_error = {
-                        "line": 1,
-                        "column": 1,
+                        "line": line_no,
+                        "column": col_no,
                         "message": first_err,
                         "snippet": "\n".join(err_text.splitlines()[:4])
                     }

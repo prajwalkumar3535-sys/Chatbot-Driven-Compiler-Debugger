@@ -35,76 +35,65 @@ export function parseProblemLocation(
 ): ProblemLocation | null {
   if (!result) return null;
 
-  // 1. Check AST syntax error first (exact parser line)
+  // If status is accepted, execution succeeded without error
+  if (result.status === 'accepted') return null;
+
+  const errorText = `${result.compile_output || ''}\n${result.stderr || ''}`;
+
+  // 1. Check actual compiler / runtime output FIRST (most accurate ground truth line)
+  if (errorText.trim()) {
+    // A. GCC / Clang / Java format (supports full path e.g. /sandbox/solution.cpp:7:10: error:)
+    const compilerMatch = /(?:[^\s:]+[\/\\])?[\w.-]+\.(?:cpp|cc|cxx|c|py|java|h|hpp):(\d+)(?::(\d+))?:\s*(?:fatal )?(?:error|warning):\s*(.+)/i.exec(errorText);
+    if (compilerMatch) {
+      return {
+        line: parseInt(compilerMatch[1], 10),
+        column: compilerMatch[2] ? parseInt(compilerMatch[2], 10) : 1,
+        message: compilerMatch[3].trim()
+      };
+    }
+
+    // B. Python traceback: find the last File "...", line X in the stack trace
+    const pyMatches = Array.from(errorText.matchAll(/File\s+"[^"]*",\s+line\s+(\d+)/gi));
+    if (pyMatches.length > 0) {
+      const lastMatch = pyMatches[pyMatches.length - 1];
+      const lineNo = parseInt(lastMatch[1], 10);
+      const lines = errorText.trim().split('\n');
+      const lastLine = lines[lines.length - 1].trim();
+      const errMessage = /^[A-Z]\w+Error:/.test(lastLine) ? lastLine : (result.error_category || 'Python Runtime Error');
+      return {
+        line: lineNo,
+        column: 1,
+        message: errMessage
+      };
+    }
+
+    // C. LLDB Stack Trace: at file.cpp:line:col
+    const lldbMatch = /at\s+[\w.-]+:(\d+)(?::(\d+))?/i.exec(errorText);
+    if (lldbMatch) {
+      return {
+        line: parseInt(lldbMatch[1], 10),
+        column: lldbMatch[2] ? parseInt(lldbMatch[2], 10) : 1,
+        message: result.error_category ? `Runtime crash: ${result.error_category}` : 'Runtime crash at this line'
+      };
+    }
+
+    // D. Generic error format: line X: error or on line X
+    const genericMatch = /(?:at\s+|on\s+)?\bline\s+(\d+)\b(?::\s*(.+))?/i.exec(errorText);
+    if (genericMatch) {
+      return {
+        line: parseInt(genericMatch[1], 10),
+        column: 1,
+        message: genericMatch[2]?.trim() || result.error_category || 'Compilation or runtime error'
+      };
+    }
+  }
+
+  // 2. Fallback to AST syntax error if no line was found in compiler errorText
   if (result.ast && !result.ast.syntax_valid && result.ast.syntax_error?.line) {
     return {
       line: result.ast.syntax_error.line,
       column: result.ast.syntax_error.column || 1,
       message: result.ast.syntax_error.message || 'Syntax error'
-    };
-  }
-
-  // If status is accepted, execution succeeded without error
-  if (result.status === 'accepted') return null;
-
-  const errorText = `${result.compile_output || ''}\n${result.stderr || ''}`;
-  if (!errorText.trim()) return null;
-
-  // 2. Standard GCC / Clang / Java format: file:line:col: error: message
-  const gccColMatch = /(?:[\w.-]+):(\d+):(\d+):\s*(?:fatal )?(?:error|warning):\s*(.+)/i.exec(errorText);
-  if (gccColMatch) {
-    return {
-      line: parseInt(gccColMatch[1], 10),
-      column: parseInt(gccColMatch[2], 10),
-      message: gccColMatch[3].trim()
-    };
-  }
-
-  // 3. GCC line only: file:line: error: message
-  const gccLineMatch = /(?:[\w.-]+):(\d+):\s*(?:fatal )?(?:error|warning):\s*(.+)/i.exec(errorText);
-  if (gccLineMatch) {
-    return {
-      line: parseInt(gccLineMatch[1], 10),
-      column: 1,
-      message: gccLineMatch[2].trim()
-    };
-  }
-
-  // 4. LLDB Stack Trace: at file.cpp:line:col
-  const lldbMatch = /at\s+[\w.-]+:(\d+)(?::(\d+))?/i.exec(errorText);
-  if (lldbMatch) {
-    return {
-      line: parseInt(lldbMatch[1], 10),
-      column: lldbMatch[2] ? parseInt(lldbMatch[2], 10) : 1,
-      message: result.error_category ? `Runtime crash: ${result.error_category}` : 'Runtime crash at this line'
-    };
-  }
-
-  // 5. Python traceback: File "...", line 12, in ...
-  const pyMatch = /File\s+"[^"]*",\s+line\s+(\d+)(?:,\s+in\s+.+)?(?:\n\s*.*)?\n([A-Z]\w+Error:.*)/i.exec(errorText);
-  if (pyMatch) {
-    return {
-      line: parseInt(pyMatch[1], 10),
-      column: 1,
-      message: pyMatch[2].trim()
-    };
-  }
-  const pySimpleMatch = /File\s+"[^"]*",\s+line\s+(\d+)/i.exec(errorText);
-  if (pySimpleMatch) {
-    return {
-      line: parseInt(pySimpleMatch[1], 10),
-      column: 1,
-      message: result.error_category || 'Runtime error'
-    };
-  }
-
-  // 6. Generic "line X: error" or "at line X"
-  const genericMatch = /(?:at\s+|on\s+)?line\s+(\d+)(?::\s*(.+))?/i.exec(errorText);
-  if (genericMatch) {
-    return {
-      line: parseInt(genericMatch[1], 10),
-      column: 1,
-      message: genericMatch[2]?.trim() || result.error_category || 'Compilation or runtime error'
     };
   }
 
@@ -213,32 +202,35 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
     const problem = parseProblemLocation(result, activeFile?.name);
 
     if (problem && problem.line > 0 && problem.line <= model.getLineCount()) {
-      // 1. Monaco Model Marker (red wavy underline, minimap tick, hover tooltip)
+      const maxCol = model.getLineMaxColumn(problem.line);
+      const startCol = Math.max(1, Math.min(problem.column || 1, maxCol));
+
+      // 1. Monaco Model Marker (red wavy underline on the exact problem code)
       monaco.editor.setModelMarkers(model, 'compiler-problem', [
         {
           startLineNumber: problem.line,
-          startColumn: problem.column || 1,
+          startColumn: startCol,
           endLineNumber: problem.line,
-          endColumn: model.getLineMaxColumn(problem.line),
+          endColumn: maxCol,
           message: problem.message,
           severity: monaco.MarkerSeverity.Error,
         }
       ]);
 
-      // 2. High-visibility Line Highlight Decoration in editor
+      // 2. High-visibility Line Highlight Decoration directly on the offending line
       decorationsRef.current = editor.deltaDecorations(decorationsRef.current, [
         {
-          range: new monaco.Range(problem.line, 1, problem.line, model.getLineMaxColumn(problem.line)),
+          range: new monaco.Range(problem.line, 1, problem.line, maxCol),
           options: {
             isWholeLine: true,
             className: 'monaco-problem-line-highlight',
-            glyphMarginClassName: 'monaco-problem-glyph',
+            linesDecorationsClassName: 'monaco-problem-gutter',
             overviewRuler: {
               color: '#ef4444',
               position: monaco.editor.OverviewRulerLane.Full,
             },
             hoverMessage: {
-              value: `⚠️ **Problem Detected (Line ${problem.line}):**\n\n\`${problem.message}\``
+              value: `⚠️ **Line ${problem.line}:** ${problem.message}`
             }
           }
         }
@@ -618,7 +610,6 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
               fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
               minimap: { enabled: showMinimap },
               lineNumbers: 'on',
-              glyphMargin: true,
               scrollBeyondLastLine: false,
               bracketPairColorization: { enabled: true },
               cursorBlinking: 'smooth',
