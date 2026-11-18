@@ -161,7 +161,11 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
   const monacoRef = useRef<any>(null);
   const decorationsRef = useRef<string[]>([]);
   const isInternalChangeRef = useRef(false);
-  const prevFileIdRef = useRef(activeFileId);
+  const onRunRef = useRef(onRun);
+
+  useEffect(() => {
+    onRunRef.current = onRun;
+  }, [onRun]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
@@ -172,33 +176,25 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
     editorRef.current = editor;
     monacoRef.current = monaco;
 
-    // Ctrl+Enter to Run shortcut
+    // Normalize EOL to LF so Windows \r\n never causes string comparison mismatches
+    try {
+      editor.getModel()?.setEOL(monaco.editor.EndOfLineSequence.LF);
+    } catch {}
+
+    // Ctrl+Enter to Run shortcut with fresh reference
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
-      onRun();
+      onRunRef.current();
     });
   };
-
-  // Handle tab switching: load new active file into editor
-  useEffect(() => {
-    if (prevFileIdRef.current !== activeFileId) {
-      prevFileIdRef.current = activeFileId;
-      isInternalChangeRef.current = false;
-      if (editorRef.current && activeFile) {
-        editorRef.current.setValue(activeFile.content);
-      }
-    }
-  }, [activeFileId]);
 
   // Keep Monaco editor model in sync with external updates (Apply to Editor, Clear, Reset)
   // WITHOUT interfering with active typing (preventing cursor jumps)
   useEffect(() => {
-    if (isInternalChangeRef.current) {
-      // Change originated from user typing in Monaco: do not touch editor.setValue!
-      isInternalChangeRef.current = false;
-      return;
-    }
-
     if (editorRef.current && activeFile) {
+      if (isInternalChangeRef.current) {
+        isInternalChangeRef.current = false;
+        return;
+      }
       const currentVal = editorRef.current.getValue();
       if (currentVal !== activeFile.content) {
         editorRef.current.setValue(activeFile.content);
@@ -599,9 +595,10 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
         {/* Monaco Editor Container */}
         <div className="flex-1 relative overflow-hidden bg-white dark:bg-dark-bg">
           <Editor
+            key={activeFile.id}
             height="100%"
             language={getMonacoLanguage(activeFile?.name || language.filename)}
-            value={activeFile?.content || ''}
+            defaultValue={activeFile?.content || ''}
             theme={theme === 'dark' ? 'vs-dark' : 'light'}
             onChange={(val) => {
               isInternalChangeRef.current = true;

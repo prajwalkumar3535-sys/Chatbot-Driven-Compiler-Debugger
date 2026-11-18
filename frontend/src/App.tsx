@@ -425,8 +425,9 @@ export function App() {
   };
 
   const handleCodeChange = (newCode: string) => {
+    const targetId = activeFile.id;
     setFiles((prev) =>
-      prev.map((f) => (f.id === activeFileId ? { ...f, content: newCode } : f))
+      prev.map((f) => (f.id === targetId ? { ...f, content: newCode } : f))
     );
   };
 
@@ -448,9 +449,6 @@ export function App() {
   const handleRun = async () => {
     if (isRunning) return;
     setIsRunning(true);
-    if (isMobile) {
-      setMobileTab('output');
-    }
 
     try {
       const res = await executeCode(activeFile.language, activeFile.content, stdin);
