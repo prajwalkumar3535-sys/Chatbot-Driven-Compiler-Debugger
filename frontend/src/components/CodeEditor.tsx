@@ -20,8 +20,96 @@ import {
   File,
   Edit2
 } from 'lucide-react';
-import type { Language, EditorFile } from '../lib/types';
+import type { Language, EditorFile, RunResult } from '../lib/types';
 import { toast } from 'sonner';
+
+export interface ProblemLocation {
+  line: number;
+  column?: number;
+  message: string;
+}
+
+export function parseProblemLocation(
+  result: RunResult | null | undefined,
+  _currentFilename?: string
+): ProblemLocation | null {
+  if (!result) return null;
+
+  // 1. Check AST syntax error first (exact parser line)
+  if (result.ast && !result.ast.syntax_valid && result.ast.syntax_error?.line) {
+    return {
+      line: result.ast.syntax_error.line,
+      column: result.ast.syntax_error.column || 1,
+      message: result.ast.syntax_error.message || 'Syntax error'
+    };
+  }
+
+  // If status is accepted, execution succeeded without error
+  if (result.status === 'accepted') return null;
+
+  const errorText = `${result.compile_output || ''}\n${result.stderr || ''}`;
+  if (!errorText.trim()) return null;
+
+  // 2. Standard GCC / Clang / Java format: file:line:col: error: message
+  const gccColMatch = /(?:[\w.-]+):(\d+):(\d+):\s*(?:fatal )?(?:error|warning):\s*(.+)/i.exec(errorText);
+  if (gccColMatch) {
+    return {
+      line: parseInt(gccColMatch[1], 10),
+      column: parseInt(gccColMatch[2], 10),
+      message: gccColMatch[3].trim()
+    };
+  }
+
+  // 3. GCC line only: file:line: error: message
+  const gccLineMatch = /(?:[\w.-]+):(\d+):\s*(?:fatal )?(?:error|warning):\s*(.+)/i.exec(errorText);
+  if (gccLineMatch) {
+    return {
+      line: parseInt(gccLineMatch[1], 10),
+      column: 1,
+      message: gccLineMatch[2].trim()
+    };
+  }
+
+  // 4. LLDB Stack Trace: at file.cpp:line:col
+  const lldbMatch = /at\s+[\w.-]+:(\d+)(?::(\d+))?/i.exec(errorText);
+  if (lldbMatch) {
+    return {
+      line: parseInt(lldbMatch[1], 10),
+      column: lldbMatch[2] ? parseInt(lldbMatch[2], 10) : 1,
+      message: result.error_category ? `Runtime crash: ${result.error_category}` : 'Runtime crash at this line'
+    };
+  }
+
+  // 5. Python traceback: File "...", line 12, in ...
+  const pyMatch = /File\s+"[^"]*",\s+line\s+(\d+)(?:,\s+in\s+.+)?(?:\n\s*.*)?\n([A-Z]\w+Error:.*)/i.exec(errorText);
+  if (pyMatch) {
+    return {
+      line: parseInt(pyMatch[1], 10),
+      column: 1,
+      message: pyMatch[2].trim()
+    };
+  }
+  const pySimpleMatch = /File\s+"[^"]*",\s+line\s+(\d+)/i.exec(errorText);
+  if (pySimpleMatch) {
+    return {
+      line: parseInt(pySimpleMatch[1], 10),
+      column: 1,
+      message: result.error_category || 'Runtime error'
+    };
+  }
+
+  // 6. Generic "line X: error" or "at line X"
+  const genericMatch = /(?:at\s+|on\s+)?line\s+(\d+)(?::\s*(.+))?/i.exec(errorText);
+  if (genericMatch) {
+    return {
+      line: parseInt(genericMatch[1], 10),
+      column: 1,
+      message: genericMatch[2]?.trim() || result.error_category || 'Compilation or runtime error'
+    };
+  }
+
+  return null;
+}
 
 interface CodeEditorProps {
   language: Language;
@@ -40,6 +128,7 @@ interface CodeEditorProps {
   onFontSizeChange: (size: number) => void;
   onResetTemplate: () => void;
   onClear: () => void;
+  result?: RunResult | null;
 }
 
 export const CodeEditor: React.FC<CodeEditorProps> = ({
@@ -59,6 +148,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
   onFontSizeChange,
   onResetTemplate,
   onClear,
+  result,
 }) => {
   const [showMinimap, setShowMinimap] = useState(true);
   const [showExplorer, setShowExplorer] = useState(false);
@@ -68,6 +158,11 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
   const [editName, setEditName] = useState('');
 
   const editorRef = useRef<any>(null);
+  const monacoRef = useRef<any>(null);
+  const decorationsRef = useRef<string[]>([]);
+  const isInternalChangeRef = useRef(false);
+  const prevFileIdRef = useRef(activeFileId);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
 
@@ -75,6 +170,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
 
   const handleEditorDidMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
+    monacoRef.current = monaco;
 
     // Ctrl+Enter to Run shortcut
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
@@ -82,15 +178,86 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
     });
   };
 
-  // Keep Monaco editor model in sync with external updates (Apply to Editor, Clear, Reset, File Switch)
+  // Handle tab switching: load new active file into editor
   useEffect(() => {
+    if (prevFileIdRef.current !== activeFileId) {
+      prevFileIdRef.current = activeFileId;
+      isInternalChangeRef.current = false;
+      if (editorRef.current && activeFile) {
+        editorRef.current.setValue(activeFile.content);
+      }
+    }
+  }, [activeFileId]);
+
+  // Keep Monaco editor model in sync with external updates (Apply to Editor, Clear, Reset)
+  // WITHOUT interfering with active typing (preventing cursor jumps)
+  useEffect(() => {
+    if (isInternalChangeRef.current) {
+      // Change originated from user typing in Monaco: do not touch editor.setValue!
+      isInternalChangeRef.current = false;
+      return;
+    }
+
     if (editorRef.current && activeFile) {
       const currentVal = editorRef.current.getValue();
       if (currentVal !== activeFile.content) {
         editorRef.current.setValue(activeFile.content);
       }
     }
-  }, [activeFile?.content, activeFile?.id]);
+  }, [activeFile?.content]);
+
+  // Highlight problem line when compilation/runtime error or AST syntax error occurs
+  useEffect(() => {
+    if (!editorRef.current || !monacoRef.current) return;
+    const editor = editorRef.current;
+    const monaco = monacoRef.current;
+    const model = editor.getModel();
+    if (!model) return;
+
+    const problem = parseProblemLocation(result, activeFile?.name);
+
+    if (problem && problem.line > 0 && problem.line <= model.getLineCount()) {
+      // 1. Monaco Model Marker (red wavy underline, minimap tick, hover tooltip)
+      monaco.editor.setModelMarkers(model, 'compiler-problem', [
+        {
+          startLineNumber: problem.line,
+          startColumn: problem.column || 1,
+          endLineNumber: problem.line,
+          endColumn: model.getLineMaxColumn(problem.line),
+          message: problem.message,
+          severity: monaco.MarkerSeverity.Error,
+        }
+      ]);
+
+      // 2. High-visibility Line Highlight Decoration in editor
+      decorationsRef.current = editor.deltaDecorations(decorationsRef.current, [
+        {
+          range: new monaco.Range(problem.line, 1, problem.line, model.getLineMaxColumn(problem.line)),
+          options: {
+            isWholeLine: true,
+            className: 'monaco-problem-line-highlight',
+            glyphMarginClassName: 'monaco-problem-glyph',
+            overviewRuler: {
+              color: '#ef4444',
+              position: monaco.editor.OverviewRulerLane.Full,
+            },
+            hoverMessage: {
+              value: `⚠️ **Problem Detected (Line ${problem.line}):**\n\n\`${problem.message}\``
+            }
+          }
+        }
+      ]);
+
+      // 3. Smoothly reveal / scroll to the problem line
+      editor.revealLineInCenter(problem.line);
+    } else {
+      // Clear markers and decorations if execution succeeded or no problem exists
+      monaco.editor.setModelMarkers(model, 'compiler-problem', []);
+      if (decorationsRef.current.length > 0) {
+        decorationsRef.current = editor.deltaDecorations(decorationsRef.current, []);
+      }
+    }
+  }, [result, activeFileId]);
 
   const detectLanguageFromFilename = (filename: string): string => {
     const ext = filename.split('.').pop()?.toLowerCase();
@@ -433,17 +600,28 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
         <div className="flex-1 relative overflow-hidden bg-white dark:bg-dark-bg">
           <Editor
             height="100%"
-            path={activeFile?.id || activeFile?.name || 'main'}
             language={getMonacoLanguage(activeFile?.name || language.filename)}
             value={activeFile?.content || ''}
             theme={theme === 'dark' ? 'vs-dark' : 'light'}
-            onChange={(val) => onCodeChange(val || '')}
+            onChange={(val) => {
+              isInternalChangeRef.current = true;
+              onCodeChange(val || '');
+              // If user is editing code, clear any previous problem markers/decorations
+              if (editorRef.current && monacoRef.current && decorationsRef.current.length > 0) {
+                const model = editorRef.current.getModel();
+                if (model) {
+                  monacoRef.current.editor.setModelMarkers(model, 'compiler-problem', []);
+                  decorationsRef.current = editorRef.current.deltaDecorations(decorationsRef.current, []);
+                }
+              }
+            }}
             onMount={handleEditorDidMount}
             options={{
               fontSize: fontSize,
               fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
               minimap: { enabled: showMinimap },
               lineNumbers: 'on',
+              glyphMargin: true,
               scrollBeyondLastLine: false,
               bracketPairColorization: { enabled: true },
               cursorBlinking: 'smooth',

@@ -272,8 +272,17 @@ export function App() {
     return [];
   });
 
-  // Mobile layout tab
+  // Mobile layout tab & responsiveness detector
   const [mobileTab, setMobileTab] = useState<'editor' | 'output' | 'chat'>('editor');
+  const [isMobile, setIsMobile] = useState<boolean>(() =>
+    typeof window !== 'undefined' ? window.innerWidth < 768 : false
+  );
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Apply Theme to Document Element
   useEffect(() => {
@@ -439,7 +448,9 @@ export function App() {
   const handleRun = async () => {
     if (isRunning) return;
     setIsRunning(true);
-    setMobileTab('output');
+    if (isMobile) {
+      setMobileTab('output');
+    }
 
     try {
       const res = await executeCode(activeFile.language, activeFile.content, stdin);
@@ -661,159 +672,164 @@ export function App() {
         historyCount={runHistory.length}
       />
 
-      {/* Desktop Main Resizable Area */}
-      <div className="flex-1 hidden md:block overflow-hidden">
-        <Group orientation="horizontal" className="h-full w-full">
-          {/* Left Region: Multi-Tab Code Editor (55%) */}
-          <Panel defaultSize="55%" minSize="30%">
-            <CodeEditor
-              language={currentLangObj}
-              files={files}
-              activeFileId={activeFileId}
-              onSelectFile={handleSelectFile}
-              onAddFile={handleAddFile}
-              onCloseFile={handleCloseFile}
-              onRenameFile={handleRenameFile}
-              onCodeChange={handleCodeChange}
-              onRun={handleRun}
-              onDebugAI={handleDebugAI}
-              isRunning={isRunning}
-              theme={theme}
-              fontSize={fontSize}
-              onFontSizeChange={setFontSize}
-              onResetTemplate={handleResetTemplate}
-              onClear={handleClearCode}
-            />
-          </Panel>
-
-          <Separator className="w-2 bg-slate-200 dark:bg-slate-800 hover:bg-indigo-500/60 border-l border-r border-slate-300 dark:border-slate-700 transition-colors cursor-col-resize flex items-center justify-center">
-            <div className="h-8 w-0.5 bg-slate-500 dark:bg-slate-400 rounded-full" />
-          </Separator>
-
-          {/* Right Region: Output Panel & Multi-Agent AI Chat (45%) */}
-          <Panel defaultSize="45%" minSize="30%">
-            <Group orientation="vertical" className="h-full w-full">
-              {/* Right Top: Output Panel with Carbon & AST Tabs */}
-              <Panel defaultSize="48%" minSize="25%">
-                <OutputPanel
-                  stdin={stdin}
-                  onStdinChange={setStdin}
-                  result={result}
-                  isRunning={isRunning}
-                  onAskAIFix={handleAskAIFix}
-                />
-              </Panel>
-
-              <Separator className="h-2 bg-slate-200 dark:bg-slate-800 hover:bg-indigo-500/60 border-t border-b border-slate-300 dark:border-slate-700 transition-colors cursor-row-resize flex items-center justify-center">
-                <div className="w-8 h-0.5 bg-slate-500 dark:bg-slate-400 rounded-full" />
-              </Separator>
-
-              {/* Right Bottom: Multi-Agent AI Chat */}
-              <Panel defaultSize="52%" minSize="30%">
-                <AgentChat
-                  agents={agents}
-                  selectedAgent={selectedAgent}
-                  onSelectAgent={setSelectedAgent}
-                  platformMode={platformMode}
-                  messages={messages}
-                  onSendMessage={handleSendMessage}
-                  onApplyCode={handleApplyCode}
-                  onClearChat={() => setMessages([])}
-                  isStreaming={isStreaming}
-                  onStopStreaming={handleStopStreaming}
-                  activeLanguage={currentLangObj.name}
-                />
-              </Panel>
-            </Group>
-          </Panel>
-        </Group>
-      </div>
-
-      {/* Mobile/Tablet Adaptive Tabs Layout */}
-      <div className="flex-1 md:hidden flex flex-col overflow-hidden">
+      {/* Main Workspace Area: Exclusively renders either Desktop or Mobile to prevent duplicate Monaco models */}
+      {!isMobile ? (
+        /* Desktop Main Resizable Area */
         <div className="flex-1 overflow-hidden">
-          {mobileTab === 'editor' && (
-            <CodeEditor
-              language={currentLangObj}
-              files={files}
-              activeFileId={activeFileId}
-              onSelectFile={handleSelectFile}
-              onAddFile={handleAddFile}
-              onCloseFile={handleCloseFile}
-              onRenameFile={handleRenameFile}
-              onCodeChange={handleCodeChange}
-              onRun={handleRun}
-              onDebugAI={handleDebugAI}
-              isRunning={isRunning}
-              theme={theme}
-              fontSize={fontSize}
-              onFontSizeChange={setFontSize}
-              onResetTemplate={handleResetTemplate}
-              onClear={handleClearCode}
-            />
-          )}
+          <Group orientation="horizontal" className="h-full w-full">
+            {/* Left Region: Multi-Tab Code Editor (55%) */}
+            <Panel defaultSize="55%" minSize="30%">
+              <CodeEditor
+                language={currentLangObj}
+                files={files}
+                activeFileId={activeFileId}
+                onSelectFile={handleSelectFile}
+                onAddFile={handleAddFile}
+                onCloseFile={handleCloseFile}
+                onRenameFile={handleRenameFile}
+                onCodeChange={handleCodeChange}
+                onRun={handleRun}
+                onDebugAI={handleDebugAI}
+                isRunning={isRunning}
+                theme={theme}
+                fontSize={fontSize}
+                onFontSizeChange={setFontSize}
+                onResetTemplate={handleResetTemplate}
+                onClear={handleClearCode}
+                result={result}
+              />
+            </Panel>
 
-          {mobileTab === 'output' && (
-            <div className="h-full flex flex-col">
-              <div className="flex-1 overflow-hidden">
-                <OutputPanel
-                  stdin={stdin}
-                  onStdinChange={setStdin}
-                  result={result}
-                  isRunning={isRunning}
-                  onAskAIFix={handleAskAIFix}
-                />
+            <Separator className="w-2 bg-slate-200 dark:bg-slate-800 hover:bg-indigo-500/60 border-l border-r border-slate-300 dark:border-slate-700 transition-colors cursor-col-resize flex items-center justify-center">
+              <div className="h-8 w-0.5 bg-slate-500 dark:bg-slate-400 rounded-full" />
+            </Separator>
+
+            {/* Right Region: Output Panel & Multi-Agent AI Chat (45%) */}
+            <Panel defaultSize="45%" minSize="30%">
+              <Group orientation="vertical" className="h-full w-full">
+                {/* Right Top: Output Panel with Carbon & AST Tabs */}
+                <Panel defaultSize="48%" minSize="25%">
+                  <OutputPanel
+                    stdin={stdin}
+                    onStdinChange={setStdin}
+                    result={result}
+                    isRunning={isRunning}
+                    onAskAIFix={handleAskAIFix}
+                  />
+                </Panel>
+
+                <Separator className="h-2 bg-slate-200 dark:bg-slate-800 hover:bg-indigo-500/60 border-t border-b border-slate-300 dark:border-slate-700 transition-colors cursor-row-resize flex items-center justify-center">
+                  <div className="w-8 h-0.5 bg-slate-500 dark:bg-slate-400 rounded-full" />
+                </Separator>
+
+                {/* Right Bottom: Multi-Agent AI Chat */}
+                <Panel defaultSize="52%" minSize="30%">
+                  <AgentChat
+                    agents={agents}
+                    selectedAgent={selectedAgent}
+                    onSelectAgent={setSelectedAgent}
+                    platformMode={platformMode}
+                    messages={messages}
+                    onSendMessage={handleSendMessage}
+                    onApplyCode={handleApplyCode}
+                    onClearChat={() => setMessages([])}
+                    isStreaming={isStreaming}
+                    onStopStreaming={handleStopStreaming}
+                    activeLanguage={currentLangObj.name}
+                  />
+                </Panel>
+              </Group>
+            </Panel>
+          </Group>
+        </div>
+      ) : (
+        /* Mobile/Tablet Adaptive Tabs Layout */
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-hidden">
+            {mobileTab === 'editor' && (
+              <CodeEditor
+                language={currentLangObj}
+                files={files}
+                activeFileId={activeFileId}
+                onSelectFile={handleSelectFile}
+                onAddFile={handleAddFile}
+                onCloseFile={handleCloseFile}
+                onRenameFile={handleRenameFile}
+                onCodeChange={handleCodeChange}
+                onRun={handleRun}
+                onDebugAI={handleDebugAI}
+                isRunning={isRunning}
+                theme={theme}
+                fontSize={fontSize}
+                onFontSizeChange={setFontSize}
+                onResetTemplate={handleResetTemplate}
+                onClear={handleClearCode}
+                result={result}
+              />
+            )}
+
+            {mobileTab === 'output' && (
+              <div className="h-full flex flex-col">
+                <div className="flex-1 overflow-hidden">
+                  <OutputPanel
+                    stdin={stdin}
+                    onStdinChange={setStdin}
+                    result={result}
+                    isRunning={isRunning}
+                    onAskAIFix={handleAskAIFix}
+                  />
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {mobileTab === 'chat' && (
-            <AgentChat
-              agents={agents}
-              selectedAgent={selectedAgent}
-              onSelectAgent={setSelectedAgent}
-              platformMode={platformMode}
-              messages={messages}
-              onSendMessage={handleSendMessage}
-              onApplyCode={handleApplyCode}
-              onClearChat={() => setMessages([])}
-              isStreaming={isStreaming}
-              onStopStreaming={handleStopStreaming}
-              activeLanguage={currentLangObj.name}
-            />
-          )}
-        </div>
+            {mobileTab === 'chat' && (
+              <AgentChat
+                agents={agents}
+                selectedAgent={selectedAgent}
+                onSelectAgent={setSelectedAgent}
+                platformMode={platformMode}
+                messages={messages}
+                onSendMessage={handleSendMessage}
+                onApplyCode={handleApplyCode}
+                onClearChat={() => setMessages([])}
+                isStreaming={isStreaming}
+                onStopStreaming={handleStopStreaming}
+                activeLanguage={currentLangObj.name}
+              />
+            )}
+          </div>
 
-        {/* Mobile Bottom Navigation Bar */}
-        <div className="h-12 bg-dark-card border-t border-dark-border grid grid-cols-3 text-xs shrink-0 select-none">
-          <button
-            onClick={() => setMobileTab('editor')}
-            className={`flex items-center justify-center space-x-1.5 font-medium transition-colors ${
-              mobileTab === 'editor' ? 'text-emerald-400 bg-dark-bg border-t-2 border-emerald-500' : 'text-slate-400'
-            }`}
-          >
-            <span>Editor</span>
-          </button>
-          <button
-            onClick={() => setMobileTab('output')}
-            className={`flex items-center justify-center space-x-1.5 font-medium transition-colors ${
-              mobileTab === 'output' ? 'text-indigo-400 bg-dark-bg border-t-2 border-indigo-500' : 'text-slate-400'
-            }`}
-          >
-            <span>Output</span>
-            {result && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />}
-          </button>
-          <button
-            onClick={() => setMobileTab('chat')}
-            className={`flex items-center justify-center space-x-1.5 font-medium transition-colors ${
-              mobileTab === 'chat' ? 'text-purple-400 bg-dark-bg border-t-2 border-purple-500' : 'text-slate-400'
-            }`}
-          >
-            <span>AI Council</span>
-            {messages.length > 0 && <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />}
-          </button>
+          {/* Mobile Bottom Navigation Bar */}
+          <div className="h-12 bg-dark-card border-t border-dark-border grid grid-cols-3 text-xs shrink-0 select-none">
+            <button
+              onClick={() => setMobileTab('editor')}
+              className={`flex items-center justify-center space-x-1.5 font-medium transition-colors ${
+                mobileTab === 'editor' ? 'text-emerald-400 bg-dark-bg border-t-2 border-emerald-500' : 'text-slate-400'
+              }`}
+            >
+              <span>Editor</span>
+            </button>
+            <button
+              onClick={() => setMobileTab('output')}
+              className={`flex items-center justify-center space-x-1.5 font-medium transition-colors ${
+                mobileTab === 'output' ? 'text-indigo-400 bg-dark-bg border-t-2 border-indigo-500' : 'text-slate-400'
+              }`}
+            >
+              <span>Output</span>
+              {result && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />}
+            </button>
+            <button
+              onClick={() => setMobileTab('chat')}
+              className={`flex items-center justify-center space-x-1.5 font-medium transition-colors ${
+                mobileTab === 'chat' ? 'text-purple-400 bg-dark-bg border-t-2 border-purple-500' : 'text-slate-400'
+              }`}
+            >
+              <span>AI Council</span>
+              {messages.length > 0 && <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Settings Modal */}
       <SettingsModal
